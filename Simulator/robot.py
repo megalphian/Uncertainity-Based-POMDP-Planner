@@ -1,4 +1,4 @@
-from shapely import Point
+from shapely.geometry import Point
 
 class Robot:
     def __init__(self):
@@ -13,7 +13,6 @@ class Robot:
         self.N = None
     
     def update_state(self, control_input, time_duration, process_noise):
-        process_noise
         self.state += control_input * time_duration
 
     def update_measurement(self, measurement):

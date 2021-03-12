@@ -50,7 +50,7 @@ class RRTPlanner:
         self.obstacle_list = obstacle_list
         self.node_list = []
 
-    def planning(self, animation=True):
+    def planning(self, animation=False):
         """
         rrt path planning
 
