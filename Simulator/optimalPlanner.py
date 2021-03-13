@@ -4,22 +4,20 @@
 #   https://arxiv.org/abs/1808.10703
 #   Code: https://github.com/AtsushiSakai/PythonRobotics
 
+from stateNode import StateNode
+
+import math
+import random
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from shapely.geometry import Point
+
 class RRTPlanner:
     """
     Class for RRT planning
     """
-
-    class Node:
-        """
-        RRT Node
-        """
-
-        def __init__(self, x, y):
-            self.x = x
-            self.y = y
-            self.path_x = []
-            self.path_y = []
-            self.parent = None
 
     def __init__(self,
                  start,
@@ -27,7 +25,7 @@ class RRTPlanner:
                  obstacle_list,
                  rand_area,
                  expand_dis=3.0,
-                 path_resolution=0.5,
+                 path_resolution=0.1,
                  goal_sample_rate=5,
                  max_iter=500):
         """
@@ -39,8 +37,8 @@ class RRTPlanner:
         randArea:Random Sampling Area [min,max]
 
         """
-        self.start = self.Node(start[0], start[1])
-        self.end = self.Node(goal[0], goal[1])
+        self.start = StateNode(start[0], start[1])
+        self.end = StateNode(goal[0], goal[1])
         self.min_rand = rand_area[0]
         self.max_rand = rand_area[1]
         self.expand_dis = expand_dis
@@ -71,8 +69,8 @@ class RRTPlanner:
             if animation and i % 5 == 0:
                 self.draw_graph(rnd_node)
 
-            if self.calc_dist_to_goal(self.node_list[-1].x,
-                                      self.node_list[-1].y) <= self.expand_dis:
+            if self.calc_dist_to_goal(self.node_list[-1].state.x,
+                                      self.node_list[-1].state.y) <= self.expand_dis:
                 final_node = self.steer(self.node_list[-1], self.end,
                                         self.expand_dis)
                 if self.check_collision(final_node, self.obstacle_list):
@@ -85,11 +83,11 @@ class RRTPlanner:
 
     def steer(self, from_node, to_node, extend_length=float("inf")):
 
-        new_node = self.Node(from_node.x, from_node.y)
+        new_node = StateNode(from_node.state.x, from_node.state.y)
         d, theta = self.calc_distance_and_angle(new_node, to_node)
 
-        new_node.path_x = [new_node.x]
-        new_node.path_y = [new_node.y]
+        new_node.path_x = [new_node.state.x]
+        new_node.path_y = [new_node.state.y]
 
         if extend_length > d:
             extend_length = d
@@ -97,44 +95,44 @@ class RRTPlanner:
         n_expand = math.floor(extend_length / self.path_resolution)
 
         for _ in range(n_expand):
-            new_node.x += self.path_resolution * math.cos(theta)
-            new_node.y += self.path_resolution * math.sin(theta)
-            new_node.path_x.append(new_node.x)
-            new_node.path_y.append(new_node.y)
+            new_node_x = self.path_resolution * math.cos(theta) + new_node.state.x
+            new_node_y = self.path_resolution * math.sin(theta) + new_node.state.y
+            new_node.state = Point(new_node_x, new_node_y)
+            new_node.path_x.append(new_node.state.x)
+            new_node.path_y.append(new_node.state.y)
 
         d, _ = self.calc_distance_and_angle(new_node, to_node)
         if d <= self.path_resolution:
-            new_node.path_x.append(to_node.x)
-            new_node.path_y.append(to_node.y)
-            new_node.x = to_node.x
-            new_node.y = to_node.y
+            new_node.path_x.append(to_node.state.x)
+            new_node.path_y.append(to_node.state.y)
+            new_node.state = Point(to_node.state.x, to_node.state.y)
 
         new_node.parent = from_node
 
         return new_node
 
     def generate_final_course(self, goal_ind):
-        path = [[self.end.x, self.end.y]]
+        path = [[self.end.state.x, self.end.state.y]]
         node = self.node_list[goal_ind]
         while node.parent is not None:
-            path.append([node.x, node.y])
+            path.append([node.state.x, node.state.y])
             node = node.parent
-        path.append([node.x, node.y])
+        path.append([node.state.x, node.state.y])
 
         return path
 
     def calc_dist_to_goal(self, x, y):
-        dx = x - self.end.x
-        dy = y - self.end.y
+        dx = x - self.end.state.x
+        dy = y - self.end.state.y
         return math.hypot(dx, dy)
 
     def get_random_node(self):
         if random.randint(0, 100) > self.goal_sample_rate:
-            rnd = self.Node(
+            rnd = StateNode(
                 random.uniform(self.min_rand, self.max_rand),
                 random.uniform(self.min_rand, self.max_rand))
         else:  # goal point sampling
-            rnd = self.Node(self.end.x, self.end.y)
+            rnd = StateNode(self.end.state.x, self.end.state.y)
         return rnd
 
     def draw_graph(self, rnd=None):
@@ -144,7 +142,7 @@ class RRTPlanner:
             'key_release_event',
             lambda event: [exit(0) if event.key == 'escape' else None])
         if rnd is not None:
-            plt.plot(rnd.x, rnd.y, "^k")
+            plt.plot(rnd.state.x, rnd.state.y, "^k")
         for node in self.node_list:
             if node.parent:
                 plt.plot(node.path_x, node.path_y, "-g")
@@ -152,8 +150,8 @@ class RRTPlanner:
         for (ox, oy, size) in self.obstacle_list:
             self.plot_circle(ox, oy, size)
 
-        plt.plot(self.start.x, self.start.y, "xr")
-        plt.plot(self.end.x, self.end.y, "xr")
+        plt.plot(self.start.state.x, self.start.state.y, "xr")
+        plt.plot(self.end.state.x, self.end.state.y, "xr")
         plt.axis("equal")
         plt.axis([-2, 15, -2, 15])
         plt.grid(True)
@@ -169,7 +167,7 @@ class RRTPlanner:
 
     @staticmethod
     def get_nearest_node_index(node_list, rnd_node):
-        dlist = [(node.x - rnd_node.x)**2 + (node.y - rnd_node.y)**2
+        dlist = [(node.state.x - rnd_node.state.x)**2 + (node.state.y - rnd_node.state.y)**2
                  for node in node_list]
         minind = dlist.index(min(dlist))
 
@@ -180,11 +178,12 @@ class RRTPlanner:
 
         if node is None:
             return False
-
-        for (ox, oy, size) in obstacleList:
-            dx_list = [ox - x for x in node.path_x]
-            dy_list = [oy - y for y in node.path_y]
-            d_list = [dx * dx + dy * dy for (dx, dy) in zip(dx_list, dy_list)]
+        
+        if(obstacleList is None):
+            return True
+        
+        for obstacle in obstacleList:
+            obstacle.contains(node)
 
             if min(d_list) <= size**2:
                 return False  # collision
@@ -193,8 +192,8 @@ class RRTPlanner:
 
     @staticmethod
     def calc_distance_and_angle(from_node, to_node):
-        dx = to_node.x - from_node.x
-        dy = to_node.y - from_node.y
+        dx = to_node.state.x - from_node.state.x
+        dy = to_node.state.y - from_node.state.y
         d = math.hypot(dx, dy)
         theta = math.atan2(dy, dx)
         return d, theta

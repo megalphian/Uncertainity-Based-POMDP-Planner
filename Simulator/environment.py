@@ -35,7 +35,7 @@ class Environment:
     def set_uncertainity(self):
         for point in self.sampled_points:
             x = point[0]
-            uncertainity_val = 1 - 5*((x-5)**2)
+            uncertainity_val = ((x-7)**2)
             self.uncertainity_distribution.append(uncertainity_val)
     
     def take_measurement(self, point):
