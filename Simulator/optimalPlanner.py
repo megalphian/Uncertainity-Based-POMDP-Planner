@@ -4,6 +4,8 @@
 #   https://arxiv.org/abs/1808.10703
 #   Code: https://github.com/AtsushiSakai/PythonRobotics
 
+# Changes made by Megnath Ramesh to integrate with project
+
 from stateNode import StateNode
 
 import math
@@ -182,13 +184,14 @@ class RRTPlanner:
         if(obstacleList is None):
             return True
         
+        safe = True
+
         for obstacle in obstacleList:
-            obstacle.contains(node)
+            if(obstacle.contains(node.state)):
+                safe = False
+                break
 
-            if min(d_list) <= size**2:
-                return False  # collision
-
-        return True  # safe
+        return safe # safe
 
     @staticmethod
     def calc_distance_and_angle(from_node, to_node):
