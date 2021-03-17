@@ -88,8 +88,7 @@ class RRTPlanner:
         new_node = StateNode(from_node.state.x, from_node.state.y)
         d, theta = self.calc_distance_and_angle(new_node, to_node)
 
-        new_node.path_x = [new_node.state.x]
-        new_node.path_y = [new_node.state.y]
+        new_node.path = [new_node.state]
 
         if extend_length > d:
             extend_length = d
@@ -100,13 +99,11 @@ class RRTPlanner:
             new_node_x = self.path_resolution * math.cos(theta) + new_node.state.x
             new_node_y = self.path_resolution * math.sin(theta) + new_node.state.y
             new_node.state = Point(new_node_x, new_node_y)
-            new_node.path_x.append(new_node.state.x)
-            new_node.path_y.append(new_node.state.y)
+            new_node.path.append(new_node.state)
 
         d, _ = self.calc_distance_and_angle(new_node, to_node)
         if d <= self.path_resolution:
-            new_node.path_x.append(to_node.state.x)
-            new_node.path_y.append(to_node.state.y)
+            new_node.path.append(to_node.state)
             new_node.state = Point(to_node.state.x, to_node.state.y)
 
         new_node.parent = from_node
@@ -187,9 +184,10 @@ class RRTPlanner:
         safe = True
 
         for obstacle in obstacleList:
-            if(obstacle.contains(node.state)):
-                safe = False
-                break
+            for path_node in node.path:
+                if(obstacle.contains(path_node)):
+                    safe = False
+                    break
 
         return safe # safe
 
