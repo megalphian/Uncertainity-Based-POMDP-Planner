@@ -1,6 +1,8 @@
 from environment import Environment
 from robot import Robot
 from optimalPlanner import RRTPlanner
+from pomdp_controller import pomdp_controller
+
 from descartes import PolygonPatch
 
 from shapely.geometry import Polygon
@@ -10,13 +12,16 @@ rect_limits = [-2, 15]
 resolution = 0.1
 
 start = (7.5, 2.5)
-end = (0, 12.5)
+end = (2.5, 12.5)
 
 obstacles = [Polygon(((6,-2), (6,6), (5,6), (5,-2))), Polygon(((6,11), (6,15), (5,15), (5,11)))]
+# obstacles = []
 
 env = Environment(rect_limits, resolution)
 rrt = RRTPlanner(start, end, obstacles, rect_limits)
 path = rrt.planning()
+
+controller = pomdp_controller(path)
 
 fig, ax = plt.subplots()
 
