@@ -28,8 +28,13 @@ for obstacle in obstacles:
     ax.add_patch(patch)
 
 x, y = zip(*env.sampled_points)
-ax.scatter(x, y, c=env.uncertainity_distribution)
+ax.scatter(x, y, c=env.uncertainity_distribution, cmap='winter_r')
 
-ax.plot([x for (x, y) in path], [y for (x, y) in path], '-r')
+ax.plot([x for (x, y) in path], [y for (x, y) in path], '.-r')
+
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(111, projection='3d')
+
+ax1.scatter(x,y,env.uncertainity_distribution)
 
 plt.show()

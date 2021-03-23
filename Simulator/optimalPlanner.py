@@ -26,7 +26,7 @@ class RRTPlanner:
                  goal,
                  obstacle_list,
                  rand_area,
-                 expand_dis=3.0,
+                 expand_dis=0.75,
                  path_resolution=0.1,
                  goal_sample_rate=5,
                  max_iter=500):
