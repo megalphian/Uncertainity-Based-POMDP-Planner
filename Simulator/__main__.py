@@ -22,17 +22,22 @@ obstacles = []
 env = Environment(rect_limits, resolution)
 rrt = RRTPlanner(start, end, obstacles, rect_limits)
 path = rrt.planning()
+path.reverse()
 
 controller = POMDPController(path)
 
-init_state = path[0]
 inputs = controller.u_bar
-no_iters = len(inputs)
 
-A, C, M, _ = init_system_matrices(no_iters, 0)
+A, C, M, _ = init_system_matrices(len(inputs), 0)
 
 estimator = KalmanEstimator(A, C, M, env)
-estimator.get_estimates(no_iters, init_state, inputs)
+
+new_path = path.copy()
+new_u = inputs.copy()
+
+for i in range(3):
+    estimator.get_estimates(len(new_u), start, end, new_u)
+    new_path, new_u = controller.get_new_path(estimator.x_est, new_path, new_u, start, end)
 
 fig, ax = plt.subplots()
 
@@ -48,6 +53,7 @@ ax.scatter(x, y, c=env.uncertainity_distribution, cmap='winter_r')
 
 ax.plot([x for (x, y) in path], [y for (x, y) in path], '.-r')
 ax.plot([x for (x, y) in estimator.x_est], [y for (x, y) in estimator.x_est], '.-k')
+ax.plot([x for (x, y) in new_path], [y for (x, y) in new_path], '--o')
 
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(111, projection='3d')

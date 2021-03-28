@@ -11,8 +11,8 @@ class KalmanEstimator:
         self.M = M
         self.environment = environment
 
-    def get_estimates(self, no_iters, init_state, inputs):
-        cov = np.identity(2)
+    def get_estimates(self, no_iters, init_state, final_state, inputs):
+        cov = 0.2 * np.identity(2)
         x = np.asarray([[init_state[0]], [init_state[1]]])
         self.x_est = [x]
         self.cov_est = [cov]
@@ -35,10 +35,13 @@ class KalmanEstimator:
 
             x = (update @ x) + (K @ measurement_i) + input_i
 
-            cov = (update @ (cov @ np.linalg.inv(update))) + self.M[i] + (K @ N @ np.transpose(K))
+            cov = (update @ (cov @ np.linalg.inv(update))) + self.M[i]
+            cov += (K @ N @ np.transpose(K))
 
             self.x_est.append(x)
             self.cov_est.append(cov)
+
+        self.x_est.append(np.asarray([[final_state[0]], [final_state[1]]]))
 
 class POMDPController:
 
@@ -65,3 +68,34 @@ class POMDPController:
             u_bar.append([u_x, u_y])
         
         return u_bar
+    
+    def get_new_path(self, x_est, path, old_u, start, end):
+        new_u = list()
+        new_path = list()
+        for i in range(len(old_u) - 1):
+
+            new_val_x = old_u[i][0] + 0.1 * (x_est[i+1][0] - path[i+1][0])[0]
+            new_val_y = old_u[i][1] + 0.1 * (x_est[i+1][1] - path[i+1][1])[0]
+
+            new_u.append([new_val_x, new_val_y])
+
+        cur_point = [start[0], start[1]]
+        new_path.append(cur_point)
+
+        for i in range(len(new_u)):
+            new_path_x = cur_point[0] + new_u[i][0]
+            new_path_y = cur_point[1] + new_u[i][1]
+
+            cur_point = [new_path_x, new_path_y]
+
+            new_path.append(cur_point)
+        
+        last_u_x = end[0] - cur_point[0]
+        last_u_y = end[1] - cur_point[1]
+
+        new_u.append([last_u_x, last_u_y])
+        new_path.append([end[0], end[1]])
+
+        self.u_bar = new_u
+
+        return [new_path, new_u]

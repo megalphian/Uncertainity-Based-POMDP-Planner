@@ -41,7 +41,12 @@ class Environment:
     def get_measurement(self, state):
 
         uncertainity_sig = self.calc_uncertainity(state[0])
+        N = np.array([[uncertainity_sig]])
+        
+        # Was getting some bad infinity values, so ignoring those
         n = np.random.normal(0, uncertainity_sig)
-        N = np.asarray([[uncertainity_sig]])
+        while(abs(n) >= np.inf):
+            n = np.random.normal(0, uncertainity_sig)
+
         measurement = state[0] + state[1] + n
         return [measurement, N]
