@@ -1,12 +1,14 @@
 from environment import Environment
-from robot import Robot
 from optimalPlanner import RRTPlanner
-from pomdp_controller import pomdp_controller
+from pomdp_controller import POMDPController
 
 from descartes import PolygonPatch
 
 from shapely.geometry import Polygon
 from matplotlib import pyplot as plt
+
+from stateNode import init_system_matrices
+from pomdp_controller import KalmanEstimator
 
 rect_limits = [-2, 15]
 resolution = 0.1
@@ -14,14 +16,24 @@ resolution = 0.1
 start = (7.5, 2.5)
 end = (2.5, 12.5)
 
-obstacles = [Polygon(((6,-2), (6,6), (5,6), (5,-2))), Polygon(((6,11), (6,15), (5,15), (5,11)))]
-# obstacles = []
+# obstacles = [Polygon(((6,-2), (6,6), (5,6), (5,-2))), Polygon(((6,11), (6,15), (5,15), (5,11)))]
+obstacles = []
 
 env = Environment(rect_limits, resolution)
 rrt = RRTPlanner(start, end, obstacles, rect_limits)
 path = rrt.planning()
 
-controller = pomdp_controller(path)
+controller = POMDPController(path)
+
+init_state = path[0]
+inputs = controller.u_bar
+measurements, N = env.get_measurements(path)
+no_iters = len(inputs)
+
+A, C, M, _ = init_system_matrices(no_iters)
+
+estimator = KalmanEstimator(A, C, M, N)
+estimator.get_estimates(no_iters, init_state, inputs, measurements)
 
 fig, ax = plt.subplots()
 
@@ -36,6 +48,7 @@ x, y = zip(*env.sampled_points)
 ax.scatter(x, y, c=env.uncertainity_distribution, cmap='winter_r')
 
 ax.plot([x for (x, y) in path], [y for (x, y) in path], '.-r')
+ax.plot([x for (x, y) in estimator.x_est], [y for (x, y) in estimator.x_est], '.-k')
 
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(111, projection='3d')
