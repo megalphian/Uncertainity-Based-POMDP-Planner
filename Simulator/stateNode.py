@@ -8,14 +8,14 @@ class StateNode:
         self.path = []
         self.parent = None
 
-def init_system_matrices(iterations):
+def init_system_matrices(iterations, m_multiplier):
     A = list()
     C = list()
     M = list()
     N = list()
     for i in range(iterations):
         A.append(np.identity(2))
-        M.append(np.identity(2))
+        M.append(m_multiplier * np.identity(2))
         C.append(np.ones((1,2)))
         N.append(1)
     return [A, C, M, N]

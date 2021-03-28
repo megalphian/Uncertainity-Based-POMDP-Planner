@@ -35,19 +35,13 @@ class Environment:
             self.uncertainity_distribution.append(uncertainity_val)
     
     def calc_uncertainity(self, x):
-        uncertainity_val = (- (x + 3) * (x - 16)) / 7.5
+        uncertainity_val = ((1 - x) ** 2) / 12
         return uncertainity_val
     
-    def get_measurements(self, states):
-        # Returns the uncertainity experienced in the point
-        measurements = list()
-        N = list()
-        for i in range(len(states) - 1):
-            state = states[i+1]
-            uncertainity_val = self.calc_uncertainity(state[0])
-            print(uncertainity_val)
-            n = uncertainity_val # No random gaussian element to the noise. Just gonna be a quadratic function
-            N.append(np.asarray([[uncertainity_val]]))
-            measurement = state[0] + state[1] + n
-            measurements.append(measurement)
-        return [measurements, N]
+    def get_measurement(self, state):
+
+        uncertainity_sig = self.calc_uncertainity(state[0])
+        n = np.random.normal(0, uncertainity_sig)
+        N = np.asarray([[uncertainity_sig]])
+        measurement = state[0] + state[1] + n
+        return [measurement, N]

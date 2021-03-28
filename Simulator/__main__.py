@@ -27,13 +27,12 @@ controller = POMDPController(path)
 
 init_state = path[0]
 inputs = controller.u_bar
-measurements, N = env.get_measurements(path)
 no_iters = len(inputs)
 
-A, C, M, _ = init_system_matrices(no_iters)
+A, C, M, _ = init_system_matrices(no_iters, 0)
 
-estimator = KalmanEstimator(A, C, M, N)
-estimator.get_estimates(no_iters, init_state, inputs, measurements)
+estimator = KalmanEstimator(A, C, M, env)
+estimator.get_estimates(no_iters, init_state, inputs)
 
 fig, ax = plt.subplots()
 
