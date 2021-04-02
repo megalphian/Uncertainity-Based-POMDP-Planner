@@ -16,6 +16,6 @@ def init_system_matrices(iterations, m_multiplier):
     for i in range(iterations):
         A.append(np.identity(2))
         M.append(m_multiplier * np.identity(2))
-        C.append(np.ones((1,2)))
+        C.append(np.identity(2))
         N.append(1)
     return [A, C, M, N]

@@ -35,18 +35,19 @@ class Environment:
             self.uncertainity_distribution.append(uncertainity_val)
     
     def calc_uncertainity(self, x):
-        uncertainity_val = ((1 - x) ** 2) / 12
+        uncertainity_val = ((1 - x) ** 2) / 10
         return uncertainity_val
     
     def get_measurement(self, state):
 
         uncertainity_sig = self.calc_uncertainity(state[0])
-        N = np.array([[uncertainity_sig]])
+        N = uncertainity_sig * np.identity(2)
         
-        # Was getting some bad infinity values, so ignoring those
-        n = np.random.normal(0, uncertainity_sig)
-        while(abs(n) >= np.inf):
-            n = np.random.normal(0, uncertainity_sig)
+        n_x = np.random.normal(0, 1)
+        n_y = np.random.normal(0, 1)
 
-        measurement = state[0] + state[1] + n
+        m_x = state[0] + (n_x * uncertainity_sig)
+        m_y = state[1] + (n_y * uncertainity_sig)
+
+        measurement = np.array([[m_x], [m_y]])
         return [measurement, N]

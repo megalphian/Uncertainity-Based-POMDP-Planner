@@ -1,42 +1,54 @@
 import numpy as np
 
+from scipy.linalg import sqrtm
+
 class KalmanEstimator:
 
     def __init__(self, A, C, M, environment):
         self.x_est = None
         self.cov_est = None
 
+        self.belief_states = None
+        self.W = None
+
         self.A = A
         self.C = C
         self.M = M
         self.environment = environment
 
-    def get_estimates(self, no_iters, init_state, final_state, inputs):
-        cov = 0.2 * np.identity(2)
+    def get_estimates(self, no_iters, init_state, final_state, inputs, init_cov):
+        cov = sqrtm(init_cov)
         x = np.asarray([[init_state[0]], [init_state[1]]])
+        x_actual = x
+
         self.x_est = [x]
         self.cov_est = [cov]
+        self.belief_states = [[x, cov]]
+        self.W = [[0, 0]]
+
         for i in range(no_iters):
 
             C = self.C[i]
             A = self.A[i]
+            M = self.M[i]
 
-            measurement, N = self.environment.get_measurement(x.flatten())
+            measurement, N = self.environment.get_measurement(x_actual.flatten())
 
-            sigma_cT = cov @ np.transpose(C)
+            A_cov = A @ cov
+            tau = (A_cov) @ (np.transpose(A_cov)) + (M @ np.transpose(M))
 
-            noise_term = (C @ sigma_cT) + N
+            K = (tau @ np.transpose(C)) @ np.linalg.inv((C @ tau @ np.transpose(C)) + (N @ np.transpose(N)))
 
-            K = (A @ sigma_cT) * np.linalg.inv(noise_term)
-            update = (A - (K @ C))
-
-            measurement_i = np.asarray([[measurement]])
+            w_term = sqrtm(K @ C @ tau)
+            cov = sqrtm(tau - (K @ C @ tau))
+            
             input_i = np.asarray([[inputs[i][0]], [inputs[i][1]]])
+            x_actual = A @ x + input_i
 
-            x = (update @ x) + (K @ measurement_i) + input_i
+            x = x_actual + (K @ (measurement - (C @ x)))
 
-            cov = (update @ (cov @ np.linalg.inv(update))) + self.M[i]
-            cov += (K @ N @ np.transpose(K))
+            self.belief_states.append([x_actual, cov])
+            self.W.append([w_term, 0])
 
             self.x_est.append(x)
             self.cov_est.append(cov)
@@ -68,6 +80,39 @@ class POMDPController:
             u_bar.append([u_x, u_y])
         
         return u_bar
+
+    def calculate_linearized_belief_dynamics(self, beliefs, inputs):
+
+        pass
+        # Calculate Gt
+        
+        # belief 0 -> - h
+        # belief 1 -> + h
+        # (belief 1 - belief 0) / (x1 - x0), (belief 1 - belief 0) / (y1 - y0), (belief 1 - belief 0) / (sigma1[0] - sigma0[0])
+        
+        # Calculate Ft
+        
+        # (belief 1 - belief 0) / (u1 - u0), (belief 1 - belief 0) / (u1 - u0)
+
+        # Calculate Gti
+        # Calculate Fti
+
+        # Calculate vectors
+    
+    def calculate_value_matrices(self, belief_dynamics):
+
+        pass
+        # Calculate Dt
+        # Calculate Et
+        # Calculate Ct
+
+        # St+1 = 10 * l * identity(6)
+        # Calculate St
+    
+    def calculate_trajectory_cost(self):
+
+        pass
+        # Calculate
     
     def get_new_path(self, x_est, path, old_u, start, end):
         new_u = list()
