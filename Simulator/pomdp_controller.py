@@ -103,8 +103,8 @@ class POMDPController:
         Gi_1 = list()
         Gi_2 = list()
 
-        # for i in range(len(beliefs) - 1):
-        for i in range(1):
+        for i in range(len(beliefs) - 1):
+        # for i in range(1):
 
             belief = beliefs[i]
             input_i = inputs[i]
