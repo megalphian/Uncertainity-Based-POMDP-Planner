@@ -2,6 +2,22 @@ import numpy as np
 
 from scipy.linalg import sqrtm
 
+class BeliefDynamicsData:
+
+    def __init__(self):
+        self.F = None
+        self.Fi_1 = None
+        self.Fi_2 = None
+
+        self.G = None
+        self.Gi_1 = None
+        self.Gi_2 = None
+
+        self.beliefs = None
+        self.inputs = None
+        self.W = None
+
+
 class KalmanEstimator:
 
     def __init__(self, A, C, M, environment):
@@ -72,9 +88,9 @@ class POMDPController:
 
         self.environment = environment
 
-        self.Q_t = np.identity(2)
+        self.Q_t = np.identity(6)
         self.R_t = np.identity(2)
-        self.Q_l = 10 * len(self.path_0) * np.identity(2)
+        self.Q_l = 10 * len(self.path_0) * np.identity(6)
 
     def compute_u_bar(self):
 
@@ -95,13 +111,15 @@ class POMDPController:
 
         h = 0.1
 
-        F = list()
-        Fi_1 = list()
-        Fi_2 = list()
+        self.steps = len(beliefs)
 
-        G = list()
-        Gi_1 = list()
-        Gi_2 = list()
+        self.F = list()
+        self.Fi_1 = list()
+        self.Fi_2 = list()
+
+        self.G = list()
+        self.Gi_1 = list()
+        self.Gi_2 = list()
 
         for i in range(len(beliefs) - 1):
         # for i in range(1):
@@ -156,9 +174,9 @@ class POMDPController:
             Fit_1 = np.transpose(np.vstack(Fit_1))
             Fit_2 = np.transpose(np.vstack(Fit_2))
             
-            F.append(Ft)
-            Fi_1.append(Fit_1)
-            Fi_2.append(Fit_2)
+            self.F.append(Ft)
+            self.Fi_1.append(Fit_1)
+            self.Fi_2.append(Fit_2)
 
             Gt = []
             Git_1 = []
@@ -189,45 +207,72 @@ class POMDPController:
                 w1_diff = np.concatenate((w1_diff.flatten(), zeros.flatten()))
                 w2_diff = np.concatenate((w2_diff.flatten(), zeros.flatten()))
 
-                g_diff = (g_1 - g_2) / (2*h)
+                Git_1.append(w1_diff)
+                Git_2.append(w2_diff)
 
+                g_diff = (g_1 - g_2) / (2*h)
                 Gt.append(g_diff)
 
             Gt = np.transpose(np.vstack(Gt))
-            G.append(Gt)
+            self.G.append(Gt)
 
             Git_1 = np.transpose(np.vstack(Git_1))
             Git_2 = np.transpose(np.vstack(Git_2))
             
-            Gi_1.append(Git_1)
-            Gi_2.append(Git_2)
+            self.Gi_1.append(Git_1)
+            self.Gi_2.append(Git_2)
 
             # Calculate vectors
     
-    def calculate_value_matrices(self, belief_dynamics):
+    def calculate_value_matrices(self):
 
-        pass
-        # Calculate Dt
-        # Calculate Et
-        # Calculate Ct
+        self.D = list()
+        self.E = list()
+        self.C = list()
 
-        # St+1 = 10 * l * identity(6)
-        # Calculate St
+        self.S = list()
+        self.L = list()
+
+        S_tplus1 = self.Q_l
+        self.S.insert(0, S_tplus1)
+
+        for i in range(len(self.G) - 1, 0, -1):
+
+            # Calculate Dt
+            D_t = self.R_t + (np.transpose(self.G[i]) @ S_tplus1 @ self.G[i]) + (np.transpose(self.Gi_1[i]) @ S_tplus1 @ self.Gi_1[i]) + (np.transpose(self.Gi_2[i]) @ S_tplus1 @ self.Gi_2[i])
+            self.D.insert(0, D_t)
+
+            # TODO: Calculate d_t vector
+
+            # Calculate Et
+            E_t = (np.transpose(self.G[i]) @ S_tplus1 @ self.F[i]) + (np.transpose(self.Gi_1[i]) @ S_tplus1 @ self.Fi_1[i]) + (np.transpose(self.Gi_2[i]) @ S_tplus1 @ self.Fi_2[i])
+            self.E.insert(0, E_t)
+
+            # Calculate Ct
+            C_t = self.Q_t + (np.transpose(self.F[i]) @ S_tplus1 @ self.F[i]) + (np.transpose(self.Fi_1[i]) @ S_tplus1 @ self.Fi_1[i]) + (np.transpose(self.Fi_2[i]) @ S_tplus1 @ self.Fi_2[i])
+            self.C.insert(0, C_t)
+
+            S_t = C_t - (np.transpose(E_t) @ np.linalg.inv(D_t) @ E_t)
+            self.S.insert(0, S_t)
+
+            L_t = - np.linalg.inv(D_t) @ E_t
+            self.L.insert(0, L_t)
     
     def calculate_trajectory_cost(self):
 
         pass
         # Calculate
     
-    def get_new_path(self, x_est, path, old_u, start, end):
+    def get_new_path(self, beliefs, old_u, start, end):
         new_u = list()
         new_path = list()
         for i in range(len(old_u) - 1):
+            u_bar = np.array(old_u[i])
+            x_bar = np.array(path[i+1])
+            print(u_bar.shape)
+            print(self.L[i].shape)
 
-            new_val_x = old_u[i][0] + 0.1 * (x_est[i+1][0] - path[i+1][0])[0]
-            new_val_y = old_u[i][1] + 0.1 * (x_est[i+1][1] - path[i+1][1])[0]
-
-            new_u.append([new_val_x, new_val_y])
+            new_u = u_bar + (self.L[i] @ (beliefs[i+1] - x_bar))
 
         cur_point = [start[0], start[1]]
         new_path.append(cur_point)

@@ -46,7 +46,8 @@ new_u = inputs.copy()
 # for i in range(3):
 estimator.make_EKF_Estimates(start, end, new_u, init_covariance)
 controller.calculate_linearized_belief_dynamics(estimator.belief_states, inputs, estimator)
-# new_path, new_u = controller.get_new_path(estimator.x_est, new_path, new_u, start, end)
+controller.calculate_value_matrices()
+new_path, new_u = controller.get_new_path(estimator.belief_states, new_u, start, end)
 
 fig, ax = plt.subplots()
 
