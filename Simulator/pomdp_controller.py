@@ -16,38 +16,28 @@ class KalmanEstimator:
         self.M = M
         self.environment = environment
 
-    def get_estimates(self, no_iters, init_state, final_state, inputs, init_cov):
+    def make_EKF_Estimates(self, init_state, final_state, inputs, init_cov):
         cov = sqrtm(init_cov)
         x = np.asarray([[init_state[0]], [init_state[1]]])
         x_actual = x
 
         self.x_est = [x]
         self.cov_est = [cov]
-        self.belief_states = [[x, cov]]
+        self.belief_states = [np.concatenate((x.flatten(), cov.flatten()))]
         self.W = [[0, 0]]
 
-        for i in range(no_iters):
+        for i in range(len(inputs)):
 
             C = self.C[i]
             A = self.A[i]
             M = self.M[i]
 
             measurement, N = self.environment.get_measurement(x_actual.flatten())
-
-            A_cov = A @ cov
-            tau = (A_cov) @ (np.transpose(A_cov)) + (M @ np.transpose(M))
-
-            K = (tau @ np.transpose(C)) @ np.linalg.inv((C @ tau @ np.transpose(C)) + (N @ np.transpose(N)))
-
-            w_term = sqrtm(K @ C @ tau)
-            cov = sqrtm(tau - (K @ C @ tau))
-            
             input_i = np.asarray([[inputs[i][0]], [inputs[i][1]]])
-            x_actual = A @ x + input_i
 
-            x = x_actual + (K @ (measurement - (C @ x)))
+            belief, w_term, x, cov, x_actual = self.make_estimate(A, C, M, N, cov, x, measurement, input_i)
 
-            self.belief_states.append([x_actual, cov])
+            self.belief_states.append(belief)
             self.W.append([w_term, 0])
 
             self.x_est.append(x)
@@ -55,24 +45,44 @@ class KalmanEstimator:
 
         self.x_est.append(np.asarray([[final_state[0]], [final_state[1]]]))
 
+    def make_estimate(self, A, C, M, N, cov, x, measurement, input_i):
+
+        A_cov = A @ cov
+        tau = (A_cov) @ (np.transpose(A_cov)) + (M @ np.transpose(M))
+
+        K = (tau @ np.transpose(C)) @ np.linalg.inv((C @ tau @ np.transpose(C)) + (N @ np.transpose(N)))
+
+        w_term = sqrtm(K @ C @ tau)
+        cov = sqrtm(tau - (K @ C @ tau))
+        
+        x_actual = A @ x + input_i
+
+        belief = np.concatenate((x_actual.flatten(), cov.flatten()))
+
+        x = x_actual + (K @ (measurement - (C @ x)))
+
+        return (belief, w_term, x, cov, x_actual)
+
 class POMDPController:
 
-    def __init__(self, optimal_path):
+    def __init__(self, optimal_path, environment):
 
-        self.b_bar = optimal_path
+        self.path_0 = optimal_path
         self.u_bar = self.compute_u_bar()
+
+        self.environment = environment
 
         self.Q_t = np.identity(2)
         self.R_t = np.identity(2)
-        self.Q_l = 10 * len(self.b_bar) * np.identity(2)
+        self.Q_l = 10 * len(self.path_0) * np.identity(2)
 
     def compute_u_bar(self):
 
         u_bar = list()
 
-        for i in range(len(self.b_bar) - 1):
-            b_i = self.b_bar[i]
-            b_j = self.b_bar[i+1]
+        for i in range(len(self.path_0) - 1):
+            b_i = self.path_0[i]
+            b_j = self.path_0[i+1]
             
             u_x = b_j[0] - b_i[0]
             u_y = b_j[1] - b_i[1]
@@ -81,23 +91,82 @@ class POMDPController:
         
         return u_bar
 
-    def calculate_linearized_belief_dynamics(self, beliefs, inputs):
+    def calculate_linearized_belief_dynamics(self, beliefs, inputs, estimator):
 
-        pass
-        # Calculate Gt
-        
-        # belief 0 -> - h
-        # belief 1 -> + h
-        # (belief 1 - belief 0) / (x1 - x0), (belief 1 - belief 0) / (y1 - y0), (belief 1 - belief 0) / (sigma1[0] - sigma0[0])
-        
-        # Calculate Ft
-        
-        # (belief 1 - belief 0) / (u1 - u0), (belief 1 - belief 0) / (u1 - u0)
+        h = 0.1
 
-        # Calculate Gti
-        # Calculate Fti
+        F = list()
+        G = list()
 
-        # Calculate vectors
+        for i in range(len(beliefs) - 1):
+        # for i in range(1):
+
+            belief = beliefs[i]
+            input_i = inputs[i]
+
+            Ft = []
+
+            C = estimator.C[i]
+            A = estimator.A[i]
+            M = estimator.M[i]
+
+            for j in range(len(belief)):
+                b_1 = belief.copy()
+                b_2 = belief.copy()
+
+                b_1[j] += h
+                b_2[j] -= h
+
+                x_1 = b_1[0:2]
+                cov_1 = b_1[2:]
+                cov_1 = cov_1.reshape((2,2))
+
+                x_2 = b_2[0:2]
+                cov_2 = b_2[2:]
+                cov_2 = cov_2.reshape((2,2))
+
+                measurement_1, N_1 = self.environment.get_measurement(x_1.flatten())
+                measurement_2, N_2 = self.environment.get_measurement(x_2.flatten())
+
+                g_1, _, _, _, _ = estimator.make_estimate(A, C, M, N_1, cov_1, x_1, measurement_1, input_i)
+                g_2, _, _, _, _= estimator.make_estimate(A, C, M, N_2, cov_2, x_2, measurement_2, input_i)
+
+                g_diff = (g_1 - g_2) / (2*h)
+                Ft.append(g_diff)
+
+            Ft = np.transpose(np.vstack(Ft))
+            F.append(Ft)
+
+            Gt = []
+
+            for j in range(len(input_i)):
+
+                input_1 = input_i.copy()
+                input_2 = input_i.copy()
+
+                input_1[j] += h
+                input_2[j] -= h
+
+                x = belief[0:2]
+                cov = belief[2:]
+                cov = cov.reshape((2,2))
+
+                measurement, N = self.environment.get_measurement(x.flatten())
+
+                g_1, _, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, input_1)
+                g_2, _, _, _, _= estimator.make_estimate(A, C, M, N, cov, x, measurement, input_2)
+
+                g_diff = (g_1 - g_2) / (2*h)
+
+                Gt.append(g_diff)
+
+            Gt = np.transpose(np.vstack(Gt))
+            G.append(Gt)
+
+            # Calculate Gti
+            # Calculate Fti
+
+            # Calculate vectors
     
     def calculate_value_matrices(self, belief_dynamics):
 
