@@ -96,19 +96,26 @@ class POMDPController:
         h = 0.1
 
         F = list()
-        G = list()
+        Fi_1 = list()
+        Fi_2 = list()
 
-        for i in range(len(beliefs) - 1):
-        # for i in range(1):
+        G = list()
+        Gi_1 = list()
+        Gi_2 = list()
+
+        # for i in range(len(beliefs) - 1):
+        for i in range(1):
 
             belief = beliefs[i]
             input_i = inputs[i]
 
-            Ft = []
-
             C = estimator.C[i]
             A = estimator.A[i]
             M = estimator.M[i]
+
+            Ft = []
+            Fit_1 = []
+            Fit_2 = []
 
             for j in range(len(belief)):
                 b_1 = belief.copy()
@@ -128,16 +135,34 @@ class POMDPController:
                 measurement_1, N_1 = self.environment.get_measurement(x_1.flatten())
                 measurement_2, N_2 = self.environment.get_measurement(x_2.flatten())
 
-                g_1, _, _, _, _ = estimator.make_estimate(A, C, M, N_1, cov_1, x_1, measurement_1, input_i)
-                g_2, _, _, _, _= estimator.make_estimate(A, C, M, N_2, cov_2, x_2, measurement_2, input_i)
+                g_1, w_1, _, _, _ = estimator.make_estimate(A, C, M, N_1, cov_1, x_1, measurement_1, input_i)
+                g_2, w_2, _, _, _ = estimator.make_estimate(A, C, M, N_2, cov_2, x_2, measurement_2, input_i)
+
+                w1_diff = (w_1[:,0] - w_2[:,0]) / (2*h)
+                w2_diff = (w_1[:,1] - w_2[:,1]) / (2*h)
+
+                zeros = np.zeros((1,4))
+
+                w1_diff = np.concatenate((w1_diff.flatten(), zeros.flatten()))
+                w2_diff = np.concatenate((w2_diff.flatten(), zeros.flatten()))
+
+                Fit_1.append(w1_diff)
+                Fit_2.append(w2_diff)
 
                 g_diff = (g_1 - g_2) / (2*h)
                 Ft.append(g_diff)
 
             Ft = np.transpose(np.vstack(Ft))
+            Fit_1 = np.transpose(np.vstack(Fit_1))
+            Fit_2 = np.transpose(np.vstack(Fit_2))
+            
             F.append(Ft)
+            Fi_1.append(Fit_1)
+            Fi_2.append(Fit_2)
 
             Gt = []
+            Git_1 = []
+            Git_2 = []
 
             for j in range(len(input_i)):
 
@@ -153,8 +178,16 @@ class POMDPController:
 
                 measurement, N = self.environment.get_measurement(x.flatten())
 
-                g_1, _, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, input_1)
-                g_2, _, _, _, _= estimator.make_estimate(A, C, M, N, cov, x, measurement, input_2)
+                g_1, w_1, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, input_1)
+                g_2, w_2, _, _, _= estimator.make_estimate(A, C, M, N, cov, x, measurement, input_2)
+
+                w1_diff = (w_1[:,0] - w_2[:,0]) / (2*h)
+                w2_diff = (w_1[:,1] - w_2[:,1]) / (2*h)
+
+                zeros = np.zeros((1,4))
+
+                w1_diff = np.concatenate((w1_diff.flatten(), zeros.flatten()))
+                w2_diff = np.concatenate((w2_diff.flatten(), zeros.flatten()))
 
                 g_diff = (g_1 - g_2) / (2*h)
 
@@ -163,8 +196,11 @@ class POMDPController:
             Gt = np.transpose(np.vstack(Gt))
             G.append(Gt)
 
-            # Calculate Gti
-            # Calculate Fti
+            Git_1 = np.transpose(np.vstack(Git_1))
+            Git_2 = np.transpose(np.vstack(Git_2))
+            
+            Gi_1.append(Git_1)
+            Gi_2.append(Git_2)
 
             # Calculate vectors
     
