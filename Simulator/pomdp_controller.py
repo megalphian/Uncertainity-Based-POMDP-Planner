@@ -33,7 +33,7 @@ class KalmanEstimator:
         self.M = M
         self.environment = environment
 
-    def make_EKF_Estimates(self, init_state, final_state, inputs, init_cov):
+    def make_EKF_Estimates(self, init_state, inputs, init_cov):
         cov = sqrtm(init_cov)
         x = np.asarray([[init_state[0]], [init_state[1]]])
         x_actual = x
@@ -91,7 +91,7 @@ class POMDPController:
     def __init__(self, optimal_path, environment):
 
         self.path_0 = optimal_path
-        self.u_bar = self.compute_u_bar()
+        self.u_bar = None
 
         self.environment = environment
 
@@ -301,7 +301,7 @@ class POMDPController:
         pass
         # Calculate
     
-    def get_new_path(self, beliefs, old_u, start, end, estimator):
+    def get_new_path(self, beliefs, old_u, start, estimator):
         new_u = list()
         
         new_path = list()
@@ -323,7 +323,7 @@ class POMDPController:
 
             measurement, N = self.environment.get_measurement(x.flatten())
 
-            new_u_val = u_bar + (self.L[i] @ (new_path[i] - b_bar)) + (0.001 * self.l[i]) # Using constant step size, but can use line search here
+            new_u_val = u_bar + (self.L[i] @ (cur_belief - b_bar)) + (0.001 * self.l[i]) # Using constant step size, but can use line search here
             new_u.append(new_u_val)
 
             new_b, _, _, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, new_u_val)
