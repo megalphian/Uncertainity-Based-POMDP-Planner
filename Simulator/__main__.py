@@ -43,11 +43,11 @@ estimator = KalmanEstimator(A, C, M, env)
 new_path = path.copy()
 new_u = inputs.copy()
 
-# for i in range(3):
-estimator.make_EKF_Estimates(start, end, new_u, init_covariance)
-controller.calculate_linearized_belief_dynamics(estimator.belief_states, inputs, estimator)
-controller.calculate_value_matrices()
-new_path, new_u = controller.get_new_path(estimator.belief_states, new_u, start, end)
+for i in range(7):
+    estimator.make_EKF_Estimates(start, end, new_u, init_covariance)
+    controller.calculate_linearized_belief_dynamics(estimator.belief_states, estimator.W1, estimator.W2, new_u, estimator)
+    controller.calculate_value_matrices(estimator.belief_states, new_u)
+    new_path, new_u = controller.get_new_path(estimator.belief_states, new_u, start, end, estimator)
 
 fig, ax = plt.subplots()
 
@@ -61,9 +61,9 @@ for obstacle in obstacles:
 x, y = zip(*env.sampled_points)
 ax.scatter(x, y, c=env.uncertainity_distribution, cmap='winter_r')
 
-ax.plot([x for (x, y) in path], [y for (x, y) in path], '.-r')
-ax.plot([x for (x, y) in estimator.x_est], [y for (x, y) in estimator.x_est], '.-k')
-# ax.plot([x for (x, y) in new_path], [y for (x, y) in new_path], '--o')
+ax.plot([x for (x, y) in path], [y for (x, y) in path], '.-', color='#083D77')
+# ax.plot([x for (x, y) in estimator.x_est], [y for (x, y) in estimator.x_est], '.-.', color='#D00000')
+ax.plot([x for (x, y, _, _, _, _) in new_path], [y for (x, y, _, _, _, _) in new_path], '--o')
 
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(111, projection='3d')

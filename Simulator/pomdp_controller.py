@@ -25,7 +25,8 @@ class KalmanEstimator:
         self.cov_est = None
 
         self.belief_states = None
-        self.W = None
+        self.W1 = None
+        self.W2 = None
 
         self.A = A
         self.C = C
@@ -40,7 +41,8 @@ class KalmanEstimator:
         self.x_est = [x]
         self.cov_est = [cov]
         self.belief_states = [np.concatenate((x.flatten(), cov.flatten()))]
-        self.W = [[0, 0]]
+        self.W1 = [np.zeros((1,6))]
+        self.W2 = [np.zeros((1,6))]
 
         for i in range(len(inputs)):
 
@@ -51,15 +53,15 @@ class KalmanEstimator:
             measurement, N = self.environment.get_measurement(x_actual.flatten())
             input_i = np.asarray([[inputs[i][0]], [inputs[i][1]]])
 
-            belief, w_term, x, cov, x_actual = self.make_estimate(A, C, M, N, cov, x, measurement, input_i)
+            belief, w1, w2, x, cov, x_actual = self.make_estimate(A, C, M, N, cov, x, measurement, input_i)
 
             self.belief_states.append(belief)
-            self.W.append([w_term, 0])
+
+            self.W1.append(w1)
+            self.W2.append(w2)
 
             self.x_est.append(x)
             self.cov_est.append(cov)
-
-        self.x_est.append(np.asarray([[final_state[0]], [final_state[1]]]))
 
     def make_estimate(self, A, C, M, N, cov, x, measurement, input_i):
 
@@ -77,7 +79,12 @@ class KalmanEstimator:
 
         x = x_actual + (K @ (measurement - (C @ x)))
 
-        return (belief, w_term, x, cov, x_actual)
+        zeros = np.zeros((1,4))
+        w1 = np.concatenate((w_term[:,0].flatten(), zeros.flatten()))
+
+        w2 = np.concatenate((w_term[:,1].flatten(), zeros.flatten()))
+
+        return (belief, w1, w2, x, cov, x_actual)
 
 class POMDPController:
 
@@ -107,7 +114,7 @@ class POMDPController:
         
         return u_bar
 
-    def calculate_linearized_belief_dynamics(self, beliefs, inputs, estimator):
+    def calculate_linearized_belief_dynamics(self, beliefs, W1, W2, inputs, estimator):
 
         h = 0.1
 
@@ -120,6 +127,9 @@ class POMDPController:
         self.G = list()
         self.Gi_1 = list()
         self.Gi_2 = list()
+
+        self.ei_1 = list()
+        self.ei_2 = list()
 
         for i in range(len(beliefs) - 1):
         # for i in range(1):
@@ -142,32 +152,26 @@ class POMDPController:
                 b_1[j] += h
                 b_2[j] -= h
 
-                x_1 = b_1[0:2]
+                x_1 = b_1[0:2].reshape((2,))
                 cov_1 = b_1[2:]
                 cov_1 = cov_1.reshape((2,2))
 
-                x_2 = b_2[0:2]
+                x_2 = b_2[0:2].reshape((2,))
                 cov_2 = b_2[2:]
                 cov_2 = cov_2.reshape((2,2))
 
                 measurement_1, N_1 = self.environment.get_measurement(x_1.flatten())
                 measurement_2, N_2 = self.environment.get_measurement(x_2.flatten())
 
-                g_1, w_1, _, _, _ = estimator.make_estimate(A, C, M, N_1, cov_1, x_1, measurement_1, input_i)
-                g_2, w_2, _, _, _ = estimator.make_estimate(A, C, M, N_2, cov_2, x_2, measurement_2, input_i)
+                g_1, w1_1, w1_2, _, _, _ = estimator.make_estimate(A, C, M, N_1, cov_1, x_1, measurement_1, input_i)
+                g_2, w2_1, w2_2, _, _, _ = estimator.make_estimate(A, C, M, N_2, cov_2, x_2, measurement_2, input_i)
 
-                w1_diff = (w_1[:,0] - w_2[:,0]) / (2*h)
-                w2_diff = (w_1[:,1] - w_2[:,1]) / (2*h)
-
-                zeros = np.zeros((1,4))
-
-                w1_diff = np.concatenate((w1_diff.flatten(), zeros.flatten()))
-                w2_diff = np.concatenate((w2_diff.flatten(), zeros.flatten()))
+                g_diff = (g_1 - g_2) / (2*h)
+                w1_diff = (w1_1 - w2_1) / (2*h)
+                w2_diff = (w1_2 - w2_2) / (2*h)
 
                 Fit_1.append(w1_diff)
                 Fit_2.append(w2_diff)
-
-                g_diff = (g_1 - g_2) / (2*h)
                 Ft.append(g_diff)
 
             Ft = np.transpose(np.vstack(Ft))
@@ -190,27 +194,21 @@ class POMDPController:
                 input_1[j] += h
                 input_2[j] -= h
 
-                x = belief[0:2]
+                x = belief[0:2].reshape((2,))
                 cov = belief[2:]
                 cov = cov.reshape((2,2))
 
                 measurement, N = self.environment.get_measurement(x.flatten())
 
-                g_1, w_1, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, input_1)
-                g_2, w_2, _, _, _= estimator.make_estimate(A, C, M, N, cov, x, measurement, input_2)
+                g_1, w1_1, w1_2, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, input_1)
+                g_2, w2_1, w2_2, _, _, _= estimator.make_estimate(A, C, M, N, cov, x, measurement, input_2)
 
-                w1_diff = (w_1[:,0] - w_2[:,0]) / (2*h)
-                w2_diff = (w_1[:,1] - w_2[:,1]) / (2*h)
-
-                zeros = np.zeros((1,4))
-
-                w1_diff = np.concatenate((w1_diff.flatten(), zeros.flatten()))
-                w2_diff = np.concatenate((w2_diff.flatten(), zeros.flatten()))
+                g_diff = (g_1 - g_2) / (2*h)
+                w1_diff = (w1_1 - w2_1) / (2*h)
+                w2_diff = (w1_2 - w2_2) / (2*h)
 
                 Git_1.append(w1_diff)
                 Git_2.append(w2_diff)
-
-                g_diff = (g_1 - g_2) / (2*h)
                 Gt.append(g_diff)
 
             Gt = np.transpose(np.vstack(Gt))
@@ -222,9 +220,18 @@ class POMDPController:
             self.Gi_1.append(Git_1)
             self.Gi_2.append(Git_2)
 
-            # Calculate vectors
+            self.ei_1.append(W1[i])
+            self.ei_2.append(W2[i])
     
-    def calculate_value_matrices(self):
+    def calculate_terminal_cost(self, terminal_belief):
+        cost = np.transpose(terminal_belief) @ self.Q_l @ terminal_belief
+        return cost
+
+    def calculate_stage_cost(self, belief):
+        cost = np.transpose(belief) @ self.Q_l @ belief
+        return cost
+
+    def calculate_value_matrices(self, beliefs, inputs):
 
         self.D = list()
         self.E = list()
@@ -232,65 +239,95 @@ class POMDPController:
 
         self.S = list()
         self.L = list()
+        self.l = list()
 
         S_tplus1 = self.Q_l
         self.S.insert(0, S_tplus1)
 
-        for i in range(len(self.G) - 1, 0, -1):
+        belief_l = beliefs[-1]
+        s_tplus1 = []
+        h = 0.1
+
+        for j in range(len(belief_l)):
+            b_1 = belief_l.copy()
+            b_2 = belief_l.copy()
+
+            b_1[j] += h
+            b_2[j] -= h
+
+            c1 = self.calculate_terminal_cost(b_1)
+            c2 = self.calculate_terminal_cost(b_2)
+
+            c_diff = (c1 - c2) / (2*h)
+            s_tplus1.append(c_diff)
+
+        s_tplus1 = np.vstack(s_tplus1)
+        s_tplus1.reshape((6,))
+
+        for t in range(len(self.G) - 1, 0, -1):
+        # for t in range(1):
 
             # Calculate Dt
-            D_t = self.R_t + (np.transpose(self.G[i]) @ S_tplus1 @ self.G[i]) + (np.transpose(self.Gi_1[i]) @ S_tplus1 @ self.Gi_1[i]) + (np.transpose(self.Gi_2[i]) @ S_tplus1 @ self.Gi_2[i])
+            D_t = self.R_t + (np.transpose(self.G[t]) @ S_tplus1 @ self.G[t]) + (np.transpose(self.Gi_1[t]) @ S_tplus1 @ self.Gi_1[t]) + (np.transpose(self.Gi_2[t]) @ S_tplus1 @ self.Gi_2[t])
             self.D.insert(0, D_t)
 
-            # TODO: Calculate d_t vector
+            input_i = np.asarray([[inputs[t][0]], [inputs[t][1]]])
+            d_t = (self.R_t @ input_i) + (np.transpose(self.G[t]) @ s_tplus1) # Ignoring Gi as it is just 0
+            d_t = d_t.reshape(2,)
 
             # Calculate Et
-            E_t = (np.transpose(self.G[i]) @ S_tplus1 @ self.F[i]) + (np.transpose(self.Gi_1[i]) @ S_tplus1 @ self.Fi_1[i]) + (np.transpose(self.Gi_2[i]) @ S_tplus1 @ self.Fi_2[i])
+            E_t = (np.transpose(self.G[t]) @ S_tplus1 @ self.F[t]) + (np.transpose(self.Gi_1[t]) @ S_tplus1 @ self.Fi_1[t]) + (np.transpose(self.Gi_2[t]) @ S_tplus1 @ self.Fi_2[t])
             self.E.insert(0, E_t)
 
             # Calculate Ct
-            C_t = self.Q_t + (np.transpose(self.F[i]) @ S_tplus1 @ self.F[i]) + (np.transpose(self.Fi_1[i]) @ S_tplus1 @ self.Fi_1[i]) + (np.transpose(self.Fi_2[i]) @ S_tplus1 @ self.Fi_2[i])
+            C_t = self.Q_t + (np.transpose(self.F[t]) @ S_tplus1 @ self.F[t]) + (np.transpose(self.Fi_1[t]) @ S_tplus1 @ self.Fi_1[t]) + (np.transpose(self.Fi_2[t]) @ S_tplus1 @ self.Fi_2[t])
             self.C.insert(0, C_t)
+
+            c_t = (self.Q_t @ beliefs[t]) + (np.transpose(self.F[t]) @ s_tplus1).reshape((6,)) + (np.transpose(self.Fi_1[t]) @ S_tplus1 @ self.ei_1[t]) + (np.transpose(self.Fi_2[t]) @ S_tplus1 @ self.ei_2[t])
 
             S_t = C_t - (np.transpose(E_t) @ np.linalg.inv(D_t) @ E_t)
             self.S.insert(0, S_t)
 
+            S_tplus1 = S_t
+
             L_t = - np.linalg.inv(D_t) @ E_t
             self.L.insert(0, L_t)
+
+            l_t = - np.linalg.inv(D_t) @ d_t
+            self.l.insert(0, l_t)
     
     def calculate_trajectory_cost(self):
 
         pass
         # Calculate
     
-    def get_new_path(self, beliefs, old_u, start, end):
+    def get_new_path(self, beliefs, old_u, start, end, estimator):
         new_u = list()
-        new_path = list()
-        for i in range(len(old_u) - 1):
-            u_bar = np.array(old_u[i])
-            x_bar = np.array(path[i+1])
-            print(u_bar.shape)
-            print(self.L[i].shape)
-
-            new_u = u_bar + (self.L[i] @ (beliefs[i+1] - x_bar))
-
-        cur_point = [start[0], start[1]]
-        new_path.append(cur_point)
-
-        for i in range(len(new_u)):
-            new_path_x = cur_point[0] + new_u[i][0]
-            new_path_y = cur_point[1] + new_u[i][1]
-
-            cur_point = [new_path_x, new_path_y]
-
-            new_path.append(cur_point)
         
-        last_u_x = end[0] - cur_point[0]
-        last_u_y = end[1] - cur_point[1]
+        new_path = list()
+        new_path.append(beliefs[0])
 
-        new_u.append([last_u_x, last_u_y])
-        new_path.append([end[0], end[1]])
+        cur_belief = beliefs[0]
 
-        self.u_bar = new_u
+        for i in range(len(old_u) - 1): 
+            u_bar = np.array(old_u[i])
+            b_bar = np.array(beliefs[i])
+
+            C = estimator.C[i]
+            A = estimator.A[i]
+            M = estimator.M[i]
+
+            x = cur_belief[0:2].reshape((2,))
+            cov = cur_belief[2:]
+            cov = cov.reshape((2,2))
+
+            measurement, N = self.environment.get_measurement(x.flatten())
+
+            new_u_val = u_bar + (self.L[i] @ (new_path[i] - b_bar)) + (0.001 * self.l[i]) # Using constant step size, but can use line search here
+            new_u.append(new_u_val)
+
+            new_b, _, _, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, new_u_val)
+            new_path.append(new_b)
+            cur_belief = new_b
 
         return [new_path, new_u]
