@@ -116,9 +116,9 @@ class POMDPController:
         
         return u_bar
 
-    def calculate_linearized_belief_dynamics(self, beliefs, W1, W2, inputs, estimator):
+    def calculate_linearized_belief_dynamics(self, beliefs, W1, W2, inputs, estimator, time_step):
 
-        h = 0.1
+        h = time_step
 
         self.steps = len(beliefs)
 
@@ -133,7 +133,7 @@ class POMDPController:
         self.ei_1 = list()
         self.ei_2 = list()
 
-        for i in range(len(beliefs) - 1):
+        for i in range(len(inputs)):
         # for i in range(1):
 
             belief = beliefs[i]
@@ -222,8 +222,8 @@ class POMDPController:
             self.Gi_1.append(Git_1)
             self.Gi_2.append(Git_2)
 
-            self.ei_1.append(W1[i])
-            self.ei_2.append(W2[i])
+            self.ei_1.append(W1[i].reshape((6,)))
+            self.ei_2.append(W2[i].reshape((6,)))
     
     def calculate_terminal_cost(self, terminal_belief):
         cost = np.transpose(terminal_belief) @ self.Q_l @ terminal_belief
@@ -266,7 +266,7 @@ class POMDPController:
         s_tplus1 = np.vstack(s_tplus1)
         s_tplus1.reshape((6,))
 
-        for t in range(len(self.G) - 1, 0, -1):
+        for t in reversed(range(len(inputs))):
         # for t in range(1):
 
             # Calculate Dt
@@ -311,7 +311,7 @@ class POMDPController:
 
         cur_belief = beliefs[0]
 
-        for i in range(len(old_u) - 1): 
+        for i in range(len(old_u)): 
             u_bar = np.array(old_u[i])
             b_bar = np.array(beliefs[i])
 

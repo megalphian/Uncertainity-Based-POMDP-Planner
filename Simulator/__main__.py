@@ -15,11 +15,11 @@ import numpy as np
 rect_limits = [-5, 20]
 resolution = 0.1
 path_resolution = 0.5
-time_step = 0.5
+time_step = 0.1
 
-end = (8, 12)
+start_hat = (1, 12)
 
-start_hat = (5, 0)
+end = (12, 0)
 init_covariance = 0.25 * np.identity(2)
 start_x = np.random.normal(start_hat[0], 0.25)
 start_y = np.random.normal(start_hat[1], 0.25)
@@ -44,8 +44,8 @@ new_u = inputs.copy()
 estimator.make_EKF_Estimates(start, new_u, init_covariance)
 new_path = estimator.belief_states
 
-for i in range(1):
-    controller.calculate_linearized_belief_dynamics(new_path, estimator.W1, estimator.W2, new_u, estimator)
+for i in range(8):
+    controller.calculate_linearized_belief_dynamics(new_path, estimator.W1, estimator.W2, new_u, estimator, time_step)
     controller.calculate_value_matrices(new_path, new_u)
     new_path, new_u = controller.get_new_path(new_path, new_u, start, estimator)
 
