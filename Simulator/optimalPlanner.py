@@ -17,11 +17,12 @@ import numpy as np
 from shapely.geometry import Point
 
 class StraightLinePlanner:
-    def __init__(self, start, goal, path_resolution=0.3):
+    def __init__(self, start, goal, path_resolution=0.3, time_step=1):
 
         self.start = start
         self.goal = goal
         self.path_resolution = path_resolution
+        self.time_step = time_step
 
         self.path = [start]
         self.inputs = list()
@@ -39,6 +40,10 @@ class StraightLinePlanner:
             u_y = self.path_resolution * np.sin(self.sin_angle) 
             x =  u_x + self.path[i][0]
             y =  u_y + self.path[i][1]
+
+            u_x = u_x/self.time_step
+            u_y = u_y/self.time_step
+            
             self.path.append([x,y])
             self.inputs.append([u_x, u_y])
         

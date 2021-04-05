@@ -20,7 +20,7 @@ class BeliefDynamicsData:
 
 class KalmanEstimator:
 
-    def __init__(self, A, C, M, environment):
+    def __init__(self, A, C, M, environment, time_step):
         self.x_est = None
         self.cov_est = None
 
@@ -32,6 +32,7 @@ class KalmanEstimator:
         self.C = C
         self.M = M
         self.environment = environment
+        self.time_step = time_step
 
     def make_EKF_Estimates(self, init_state, inputs, init_cov):
         cov = sqrtm(init_cov)
@@ -73,7 +74,8 @@ class KalmanEstimator:
         w_term = sqrtm(K @ C @ tau)
         cov = sqrtm(tau - (K @ C @ tau))
         
-        x_actual = A @ x + input_i
+        input_steps = [x * self.time_step for x in input_i]
+        x_actual = A @ x + input_steps
 
         belief = np.concatenate((x_actual.flatten(), cov.flatten()))
 
