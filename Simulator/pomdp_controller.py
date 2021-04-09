@@ -45,11 +45,9 @@ class POMDPController:
         
         return u_bar
 
-    def calculate_linearized_belief_dynamics(self, beliefs, W1, W2, inputs, estimator, time_step):
+    def calculate_linearized_belief_dynamics(self, beliefs, W1, W2, inputs, estimator):
 
-        h = time_step
-
-        self.steps = len(beliefs)
+        h = 0.1
 
         self.F = list()
         self.Fi_1 = list()
@@ -90,11 +88,11 @@ class POMDPController:
                 cov_2 = b_2[2:]
                 cov_2 = cov_2.reshape((2,2))
 
-                measurement_1, N_1 = self.environment.get_measurement(x_1.flatten())
-                measurement_2, N_2 = self.environment.get_measurement(x_2.flatten())
+                measurement_1, N_1, N_1_diff = self.environment.get_measurement(x_1.flatten())
+                measurement_2, N_2, N_2_diff = self.environment.get_measurement(x_2.flatten())
 
-                g_1, w1_1, w1_2, _, _, _ = estimator.make_estimate(A, C, M, N_1, cov_1, x_1, measurement_1, input_i)
-                g_2, w2_1, w2_2, _, _, _ = estimator.make_estimate(A, C, M, N_2, cov_2, x_2, measurement_2, input_i)
+                g_1, w1_1, w1_2, _, _, _ = estimator.make_estimate(A, C, M, N_1, N_1_diff, cov_1, x_1, measurement_1, input_i)
+                g_2, w2_1, w2_2, _, _, _ = estimator.make_estimate(A, C, M, N_2, N_2_diff, cov_2, x_2, measurement_2, input_i)
 
                 g_diff = (g_1 - g_2) / (2*h)
                 w1_diff = (w1_1 - w2_1) / (2*h)
@@ -128,10 +126,10 @@ class POMDPController:
                 cov = belief[2:]
                 cov = cov.reshape((2,2))
 
-                measurement, N = self.environment.get_measurement(x.flatten())
+                measurement, N, N_diff = self.environment.get_measurement(x.flatten())
 
-                g_1, w1_1, w1_2, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, input_1)
-                g_2, w2_1, w2_2, _, _, _= estimator.make_estimate(A, C, M, N, cov, x, measurement, input_2)
+                g_1, w1_1, w1_2, _, _, _ = estimator.make_estimate(A, C, M, N, N_diff, cov, x, measurement, input_1)
+                g_2, w2_1, w2_2, _, _, _= estimator.make_estimate(A, C, M, N, N_diff, cov, x, measurement, input_2)
 
                 g_diff = (g_1 - g_2) / (2*h)
                 w1_diff = (w1_1 - w2_1) / (2*h)
@@ -157,8 +155,10 @@ class POMDPController:
         cost = np.transpose(terminal_belief) @ self.Q_l @ terminal_belief
         return cost
 
-    def calculate_stage_cost(self, belief):
-        cost = np.transpose(belief) @ self.Q_l @ belief
+    def calculate_stage_cost(self, belief, input_i):
+        cov = belief[2:]
+        trace = (np.transpose(cov) @ cov) # Ignoring Q_t as it is identity
+        cost = trace + np.transpose(input_i) @ self.R_t @ input_i
         return cost
 
     def calculate_value_matrices(self, beliefs, inputs):
@@ -195,7 +195,6 @@ class POMDPController:
         s_tplus1.reshape((6,))
 
         for t in reversed(range(len(inputs))):
-        # for t in range(1):
 
             # Calculate Dt
             D_t = self.R_t + (np.transpose(self.G[t]) @ S_tplus1 @ self.G[t]) + (np.transpose(self.Gi_1[t]) @ S_tplus1 @ self.Gi_1[t]) + (np.transpose(self.Gi_2[t]) @ S_tplus1 @ self.Gi_2[t])
@@ -213,8 +212,6 @@ class POMDPController:
             C_t = self.Q_t + (np.transpose(self.F[t]) @ S_tplus1 @ self.F[t]) + (np.transpose(self.Fi_1[t]) @ S_tplus1 @ self.Fi_1[t]) + (np.transpose(self.Fi_2[t]) @ S_tplus1 @ self.Fi_2[t])
             self.C.insert(0, C_t)
 
-            c_t = (self.Q_t @ beliefs[t]) + (np.transpose(self.F[t]) @ s_tplus1).reshape((6,)) + (np.transpose(self.Fi_1[t]) @ S_tplus1 @ self.ei_1[t]) + (np.transpose(self.Fi_2[t]) @ S_tplus1 @ self.ei_2[t])
-
             S_t = C_t - (np.transpose(E_t) @ np.linalg.inv(D_t) @ E_t)
             self.S.insert(0, S_t)
 
@@ -226,18 +223,21 @@ class POMDPController:
             l_t = - np.linalg.inv(D_t) @ d_t
             self.l.insert(0, l_t)
     
-    def calculate_trajectory_cost(self, terminal_belief):
+    def calculate_trajectory_cost(self, beliefs, inputs):
  
         S_tplus1 = self.Q_l
-
+        terminal_belief = beliefs[-1]
         s_tplus1 = self.calculate_terminal_cost(terminal_belief)
 
-        for i in reversed(range(len(self.L))):
-            
+        for i in reversed(range(len(inputs))):
+            belief = beliefs[i]
+            input_i = inputs[i]
+            cost = self.calculate_stage_cost(belief, input_i)
+
             ei_1 = self.ei_1[i]
             ei_2 = self.ei_2[i]
 
-            s_tplus1 += (1/2) * ((ei_1 @ S_tplus1 @ np.transpose(ei_1)) + (ei_2 @ S_tplus1 @ np.transpose(ei_2)))
+            s_tplus1 += (cost + ((1/2) * ((ei_1 @ S_tplus1 @ np.transpose(ei_1)) + (ei_2 @ S_tplus1 @ np.transpose(ei_2)))))
 
             L_t = self.L[i]
 
@@ -248,7 +248,7 @@ class POMDPController:
         
         return np.real(s_tplus1)
 
-    def get_new_path(self, beliefs, old_u, start, estimator, step_size):
+    def get_new_path(self, beliefs, old_u, estimator, step_size):
         new_u = list()
         
         new_path = list()
@@ -268,12 +268,12 @@ class POMDPController:
             cov = cur_belief[2:]
             cov = cov.reshape((2,2))
 
-            measurement, N = self.environment.get_measurement(x.flatten())
+            measurement, N, N_diff = self.environment.get_measurement(x.flatten())
 
             new_u_val = u_bar + (self.L[i] @ (cur_belief - b_bar)) + (step_size * self.l[i])
             new_u.append(new_u_val)
 
-            new_b, _, _, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, new_u_val)
+            new_b, _, _, _, _, _ = estimator.make_estimate(A, C, M, N, N_diff, cov, x, measurement, new_u_val)
             new_path.append(new_b)
             cur_belief = new_b
 
