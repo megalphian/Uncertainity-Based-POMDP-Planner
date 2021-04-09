@@ -227,11 +227,24 @@ class POMDPController:
             self.l.insert(0, l_t)
     
     def calculate_trajectory_cost(self, terminal_belief):
+ 
+        S_tplus1 = self.Q_l
 
         s_tplus1 = self.calculate_terminal_cost(terminal_belief)
 
-        for i in reversed(range(len(self.ei_1))):
-            s_tplus1 += (1/2) * ((self.ei_1[i] @ self.S[i+1] @ np.transpose(self.ei_1[i])) + (self.ei_2[i] @ self.S[i+1] @ np.transpose(self.ei_2[i])))
+        for i in reversed(range(len(self.L))):
+            
+            ei_1 = self.ei_1[i]
+            ei_2 = self.ei_2[i]
+
+            s_tplus1 += (1/2) * ((ei_1 @ S_tplus1 @ np.transpose(ei_1)) + (ei_2 @ S_tplus1 @ np.transpose(ei_2)))
+
+            L_t = self.L[i]
+
+            mat_1 = (self.F[i] + (self.G[i] @ L_t))
+            mat_2 = (self.Fi_1[i] + (self.Gi_1[i] @ L_t))
+            mat_3 = (self.Fi_2[i] + (self.Gi_2[i] @ L_t))
+            S_tplus1 = self.Q_t + (np.transpose(L_t) @ self.R_t @ L_t) + (np.transpose(mat_1) @ S_tplus1 @ mat_1) + (np.transpose(mat_2) @ S_tplus1 @ mat_2) + (np.transpose(mat_3) @ S_tplus1 @ mat_3)
         
         return np.real(s_tplus1)
 
