@@ -1,11 +1,3 @@
-# RRT Planner class
-# Source: 
-#   Atsushi Sakai et al.
-#   https://arxiv.org/abs/1808.10703
-#   Code: https://github.com/AtsushiSakai/PythonRobotics
-
-# Changes made by Megnath Ramesh to integrate with project
-
 from stateNode import StateNode
 
 import math
@@ -51,7 +43,14 @@ class StraightLinePlanner:
 
 class RRTPlanner:
     """
-    Class for RRT planning
+    RRT Planner class
+    
+    Source: 
+    Atsushi Sakai et al.
+    https://arxiv.org/abs/1808.10703
+    Code: https://github.com/AtsushiSakai/PythonRobotics
+
+    Changes made by Megnath Ramesh to integrate with project
     """
 
     def __init__(self,

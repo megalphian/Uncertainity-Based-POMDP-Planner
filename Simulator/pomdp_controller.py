@@ -1,7 +1,5 @@
 import numpy as np
 
-from scipy.linalg import sqrtm
-
 class BeliefDynamicsData:
 
     def __init__(self):
@@ -17,77 +15,6 @@ class BeliefDynamicsData:
         self.inputs = None
         self.W = None
 
-
-class KalmanEstimator:
-
-    def __init__(self, A, C, M, environment, time_step):
-        self.x_est = None
-        self.cov_est = None
-
-        self.belief_states = None
-        self.W1 = None
-        self.W2 = None
-
-        self.A = A
-        self.C = C
-        self.M = M
-        self.environment = environment
-        self.time_step = time_step
-
-    def make_EKF_Estimates(self, init_state, inputs, init_cov):
-        cov = sqrtm(init_cov)
-        x = np.asarray([[init_state[0]], [init_state[1]]])
-        x_actual = x
-
-        self.x_est = [x]
-        self.cov_est = [cov]
-        self.belief_states = [np.concatenate((x.flatten(), cov.flatten()))]
-        self.W1 = [np.zeros((1,6))]
-        self.W2 = [np.zeros((1,6))]
-
-        for i in range(len(inputs)):
-
-            C = self.C[i]
-            A = self.A[i]
-            M = self.M[i]
-
-            measurement, N = self.environment.get_measurement(x_actual.flatten())
-            input_i = np.asarray([[inputs[i][0]], [inputs[i][1]]])
-
-            belief, w1, w2, x, cov, x_actual = self.make_estimate(A, C, M, N, cov, x, measurement, input_i)
-
-            self.belief_states.append(belief)
-
-            self.W1.append(w1)
-            self.W2.append(w2)
-
-            self.x_est.append(x)
-            self.cov_est.append(cov)
-
-    def make_estimate(self, A, C, M, N, cov, x, measurement, input_i):
-
-        A_cov = A @ cov
-        tau = (A_cov) @ (np.transpose(A_cov)) + (M @ np.transpose(M))
-
-        K = (tau @ np.transpose(C)) @ np.linalg.inv((C @ tau @ np.transpose(C)) + (N @ np.transpose(N)))
-
-        w_term = sqrtm(K @ C @ tau)
-        cov = sqrtm(tau - (K @ C @ tau))
-        
-        input_steps = [x * self.time_step for x in input_i]
-        x_actual = A @ x + input_steps
-
-        belief = np.concatenate((x_actual.flatten(), cov.flatten()))
-
-        x = x_actual + (K @ (measurement - (C @ x)))
-
-        zeros = np.zeros((1,4))
-        w1 = np.concatenate((w_term[:,0].flatten(), zeros.flatten()))
-
-        w2 = np.concatenate((w_term[:,1].flatten(), zeros.flatten()))
-
-        return (belief, w1, w2, x, cov, x_actual)
-
 class POMDPController:
 
     def __init__(self, optimal_path, environment):
@@ -100,6 +27,8 @@ class POMDPController:
         self.Q_t = np.identity(6)
         self.R_t = np.identity(2)
         self.Q_l = 10 * len(self.path_0) * np.identity(6)
+
+        self.trajectory_cost = np.inf
 
     def compute_u_bar(self):
 
@@ -134,7 +63,6 @@ class POMDPController:
         self.ei_2 = list()
 
         for i in range(len(inputs)):
-        # for i in range(1):
 
             belief = beliefs[i]
             input_i = inputs[i]
@@ -298,12 +226,16 @@ class POMDPController:
             l_t = - np.linalg.inv(D_t) @ d_t
             self.l.insert(0, l_t)
     
-    def calculate_trajectory_cost(self):
+    def calculate_trajectory_cost(self, terminal_belief):
 
-        pass
-        # Calculate
-    
-    def get_new_path(self, beliefs, old_u, start, estimator):
+        s_tplus1 = self.calculate_terminal_cost(terminal_belief)
+
+        for i in reversed(range(len(self.ei_1))):
+            s_tplus1 += (1/2) * ((self.ei_1[i] @ self.S[i+1] @ np.transpose(self.ei_1[i])) + (self.ei_2[i] @ self.S[i+1] @ np.transpose(self.ei_2[i])))
+        
+        return np.real(s_tplus1)
+
+    def get_new_path(self, beliefs, old_u, start, estimator, step_size):
         new_u = list()
         
         new_path = list()
@@ -325,11 +257,13 @@ class POMDPController:
 
             measurement, N = self.environment.get_measurement(x.flatten())
 
-            new_u_val = u_bar + (self.L[i] @ (cur_belief - b_bar)) + (0.001 * self.l[i]) # Using constant step size, but can use line search here
+            new_u_val = u_bar + (self.L[i] @ (cur_belief - b_bar)) + (step_size * self.l[i])
             new_u.append(new_u_val)
 
             new_b, _, _, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, new_u_val)
             new_path.append(new_b)
             cur_belief = new_b
 
+        new_path = np.real(new_path)
+        new_u = np.real(new_u)
         return [new_path, new_u]
