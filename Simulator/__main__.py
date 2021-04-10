@@ -17,15 +17,15 @@ resolution = 0.1
 path_resolution = 0.5
 time_step = 0.1
 
-start_hat = (-5, 10)
+end = (10, 10)
 
-end = (-5, -2)
+start_hat = (2, -2)
 cov_val = 0.25
 init_covariance = cov_val * np.identity(2)
 start_x = np.random.normal(start_hat[0], cov_val)
 start_y = np.random.normal(start_hat[1], cov_val)
 
-start = (start_x, start_y)
+start = np.array((start_x, start_y)).reshape((2,1))
 
 obstacles = []
 
@@ -45,25 +45,25 @@ estimator.make_EKF_Estimates(start_hat, current_u, init_covariance)
 initial_x_est = estimator.x_est
 current_path = estimator.belief_states
 
-# TODO: Implement line search with the expected cost function
 original_step_size = 0.1
 
 step_size = original_step_size
 trajectory_cost = np.inf
 epsilon = 50
-iteration_cap = 40
+iteration_cap = 20
 
-while(True):
-    controller.calculate_linearized_belief_dynamics(current_path, estimator.W1, estimator.W2, current_u, estimator)
-    controller.calculate_value_matrices(current_path, current_u)
+for i in range(1):
+    print('new')
+    belief_dynamics = controller.calculate_linearized_belief_dynamics(current_path, current_u, estimator)
+    controller.calculate_value_matrices(belief_dynamics)
     
     line_search_iterations = 0
     while(line_search_iterations < iteration_cap):
         new_path, new_u = controller.get_new_path(current_path, current_u, estimator, step_size)
-        new_trajectory_cost = controller.calculate_trajectory_cost(new_path, new_u)
+        new_trajectory_cost = controller.calculate_trajectory_cost(new_path, new_u, belief_dynamics)
         
         print(new_trajectory_cost)
-        if(new_trajectory_cost <= trajectory_cost):
+        if(new_trajectory_cost <= trajectory_cost or abs(trajectory_cost - new_trajectory_cost) < epsilon):
             step_size = original_step_size
             break
         

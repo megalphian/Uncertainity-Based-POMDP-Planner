@@ -57,16 +57,19 @@ class KalmanEstimator:
         w_term = sqrtm(K @ C @ tau)
         cov = sqrtm(tau - (K @ C @ tau))
         
-        input_steps = [u * self.time_step for u in input_i]
+        input_steps = np.array([u * self.time_step for u in input_i]).reshape((2,1))
         x_actual = A @ x + input_steps
 
         belief = np.concatenate((x_actual.flatten(), cov.flatten()))
+        belief = belief.reshape((6,1))
 
         x = x_actual + (K @ (measurement - (C @ x)))
 
         zeros = np.zeros((1,4))
         w1 = np.concatenate((w_term[:,0].flatten(), zeros.flatten()))
+        w1 = w1.reshape((6,1))
 
         w2 = np.concatenate((w_term[:,1].flatten(), zeros.flatten()))
+        w2 = w2.reshape((6,1))
 
         return (belief, w1, w2, x, cov, x_actual)

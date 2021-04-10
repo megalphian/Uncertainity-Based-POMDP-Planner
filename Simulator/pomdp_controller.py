@@ -11,9 +11,11 @@ class BeliefDynamicsData:
         self.Gi_1 = None
         self.Gi_2 = None
 
+        self.ei_1 = None
+        self.ei_2 = None
+
         self.beliefs = None
         self.inputs = None
-        self.W = None
 
 class POMDPController:
 
@@ -45,20 +47,25 @@ class POMDPController:
         
         return u_bar
 
-    def calculate_linearized_belief_dynamics(self, beliefs, W1, W2, inputs, estimator):
+    def calculate_linearized_belief_dynamics(self, beliefs, inputs, estimator):
 
-        h = 0.1
+        h = 0.5
 
-        self.F = list()
-        self.Fi_1 = list()
-        self.Fi_2 = list()
+        linearized_dynamics = BeliefDynamicsData()
 
-        self.G = list()
-        self.Gi_1 = list()
-        self.Gi_2 = list()
+        linearized_dynamics.beliefs = beliefs
+        linearized_dynamics.inputs = inputs
 
-        self.ei_1 = list()
-        self.ei_2 = list()
+        linearized_dynamics.F = list()
+        linearized_dynamics.Fi_1 = list()
+        linearized_dynamics.Fi_2 = list()
+
+        linearized_dynamics.G = list()
+        linearized_dynamics.Gi_1 = list()
+        linearized_dynamics.Gi_2 = list()
+
+        linearized_dynamics.ei_1 = list()
+        linearized_dynamics.ei_2 = list()
 
         for i in range(len(inputs)):
 
@@ -80,11 +87,11 @@ class POMDPController:
                 b_1[j] += h
                 b_2[j] -= h
 
-                x_1 = b_1[0:2].reshape((2,))
+                x_1 = b_1[0:2].reshape((2,1))
                 cov_1 = b_1[2:]
                 cov_1 = cov_1.reshape((2,2))
 
-                x_2 = b_2[0:2].reshape((2,))
+                x_2 = b_2[0:2].reshape((2,1))
                 cov_2 = b_2[2:]
                 cov_2 = cov_2.reshape((2,2))
 
@@ -102,13 +109,13 @@ class POMDPController:
                 Fit_2.append(w2_diff)
                 Ft.append(g_diff)
 
-            Ft = np.transpose(np.vstack(Ft))
-            Fit_1 = np.transpose(np.vstack(Fit_1))
-            Fit_2 = np.transpose(np.vstack(Fit_2))
+            Ft = np.hstack(Ft)
+            Fit_1 = np.hstack(Fit_1)
+            Fit_2 = np.hstack(Fit_2)
             
-            self.F.append(Ft)
-            self.Fi_1.append(Fit_1)
-            self.Fi_2.append(Fit_2)
+            linearized_dynamics.F.append(Ft)
+            linearized_dynamics.Fi_1.append(Fit_1)
+            linearized_dynamics.Fi_2.append(Fit_2)
 
             Gt = []
             Git_1 = []
@@ -122,7 +129,7 @@ class POMDPController:
                 input_1[j] += h
                 input_2[j] -= h
 
-                x = belief[0:2].reshape((2,))
+                x = belief[0:2].reshape((2,1))
                 cov = belief[2:]
                 cov = cov.reshape((2,2))
 
@@ -139,17 +146,19 @@ class POMDPController:
                 Git_2.append(w2_diff)
                 Gt.append(g_diff)
 
-            Gt = np.transpose(np.vstack(Gt))
-            self.G.append(Gt)
+            Gt = np.hstack(Gt)
+            linearized_dynamics.G.append(Gt)
 
-            Git_1 = np.transpose(np.vstack(Git_1))
-            Git_2 = np.transpose(np.vstack(Git_2))
+            Git_1 = np.hstack(Git_1)
+            Git_2 = np.hstack(Git_2)
             
-            self.Gi_1.append(Git_1)
-            self.Gi_2.append(Git_2)
+            linearized_dynamics.Gi_1.append(Git_1)
+            linearized_dynamics.Gi_2.append(Git_2)
 
-            self.ei_1.append(W1[i].reshape((6,)))
-            self.ei_2.append(W2[i].reshape((6,)))
+            linearized_dynamics.ei_1.append(estimator.W1[i].reshape((6,1)))
+            linearized_dynamics.ei_2.append(estimator.W2[i].reshape((6,1)))
+        
+        return linearized_dynamics
     
     def calculate_terminal_cost(self, terminal_belief):
         cost = np.transpose(terminal_belief) @ self.Q_l @ terminal_belief
@@ -161,7 +170,7 @@ class POMDPController:
         cost = trace + np.transpose(input_i) @ self.R_t @ input_i
         return cost
 
-    def calculate_value_matrices(self, beliefs, inputs):
+    def calculate_value_matrices(self, belief_dynamics):
 
         self.D = list()
         self.E = list()
@@ -174,9 +183,9 @@ class POMDPController:
         S_tplus1 = self.Q_l
         self.S.insert(0, S_tplus1)
 
-        belief_l = beliefs[-1]
+        belief_l = belief_dynamics.beliefs[-1]
         s_tplus1 = []
-        h = 0.1
+        h = 0.5
 
         for j in range(len(belief_l)):
             b_1 = belief_l.copy()
@@ -192,38 +201,40 @@ class POMDPController:
             s_tplus1.append(c_diff)
 
         s_tplus1 = np.vstack(s_tplus1)
-        s_tplus1.reshape((6,))
 
-        for t in reversed(range(len(inputs))):
+        for t in reversed(range(len(belief_dynamics.inputs))):
 
             # Calculate Dt
-            D_t = self.R_t + (np.transpose(self.G[t]) @ S_tplus1 @ self.G[t]) + (np.transpose(self.Gi_1[t]) @ S_tplus1 @ self.Gi_1[t]) + (np.transpose(self.Gi_2[t]) @ S_tplus1 @ self.Gi_2[t])
+            D_t = self.R_t + (np.transpose(belief_dynamics.G[t]) @ S_tplus1 @ belief_dynamics.G[t]) + (np.transpose(belief_dynamics.Gi_1[t]) @ S_tplus1 @ belief_dynamics.Gi_1[t]) + (np.transpose(belief_dynamics.Gi_2[t]) @ S_tplus1 @ belief_dynamics.Gi_2[t])
             self.D.insert(0, D_t)
 
-            input_i = np.asarray([[inputs[t][0]], [inputs[t][1]]])
-            d_t = (self.R_t @ input_i) + (np.transpose(self.G[t]) @ s_tplus1) # Ignoring Gi as it is just 0
-            d_t = d_t.reshape(2,)
+            input_i = np.asarray([[belief_dynamics.inputs[t][0]], [belief_dynamics.inputs[t][1]]])
+            d_t = (self.R_t @ input_i) + (np.transpose(belief_dynamics.G[t]) @ s_tplus1) # Ignoring Gi as it is just 0
 
             # Calculate Et
-            E_t = (np.transpose(self.G[t]) @ S_tplus1 @ self.F[t]) + (np.transpose(self.Gi_1[t]) @ S_tplus1 @ self.Fi_1[t]) + (np.transpose(self.Gi_2[t]) @ S_tplus1 @ self.Fi_2[t])
+            E_t = (np.transpose(belief_dynamics.G[t]) @ S_tplus1 @ belief_dynamics.F[t]) + (np.transpose(belief_dynamics.Gi_1[t]) @ S_tplus1 @ belief_dynamics.Fi_1[t]) + (np.transpose(belief_dynamics.Gi_2[t]) @ S_tplus1 @ belief_dynamics.Fi_2[t])
             self.E.insert(0, E_t)
 
             # Calculate Ct
-            C_t = self.Q_t + (np.transpose(self.F[t]) @ S_tplus1 @ self.F[t]) + (np.transpose(self.Fi_1[t]) @ S_tplus1 @ self.Fi_1[t]) + (np.transpose(self.Fi_2[t]) @ S_tplus1 @ self.Fi_2[t])
+            C_t = self.Q_t + (np.transpose(belief_dynamics.F[t]) @ S_tplus1 @ belief_dynamics.F[t]) + (np.transpose(belief_dynamics.Fi_1[t]) @ S_tplus1 @ belief_dynamics.Fi_1[t]) + (np.transpose(belief_dynamics.Fi_2[t]) @ S_tplus1 @ belief_dynamics.Fi_2[t])
             self.C.insert(0, C_t)
+
+            c_t = (self.Q_t @ belief_dynamics.beliefs[t].reshape((6,1))) + (np.transpose(belief_dynamics.F[t]) @ s_tplus1) + (np.transpose(belief_dynamics.Fi_1[t]) @ S_tplus1 @ belief_dynamics.ei_1[t]) + (np.transpose(belief_dynamics.Fi_2[t]) @ S_tplus1 @ belief_dynamics.ei_2[t])
 
             S_t = C_t - (np.transpose(E_t) @ np.linalg.inv(D_t) @ E_t)
             self.S.insert(0, S_t)
 
             S_tplus1 = S_t
 
-            L_t = - np.linalg.inv(D_t) @ E_t
+            s_tplus1 = c_t - (np.transpose(E_t) @ np.linalg.inv(D_t) @ d_t)
+
+            L_t = - (np.linalg.inv(D_t) @ E_t)
             self.L.insert(0, L_t)
 
-            l_t = - np.linalg.inv(D_t) @ d_t
+            l_t = - (np.linalg.inv(D_t) @ d_t)
             self.l.insert(0, l_t)
     
-    def calculate_trajectory_cost(self, beliefs, inputs):
+    def calculate_trajectory_cost(self, beliefs, inputs, belief_dynamics):
  
         S_tplus1 = self.Q_l
         terminal_belief = beliefs[-1]
@@ -234,16 +245,16 @@ class POMDPController:
             input_i = inputs[i]
             cost = self.calculate_stage_cost(belief, input_i)
 
-            ei_1 = self.ei_1[i]
-            ei_2 = self.ei_2[i]
+            ei_1 = belief_dynamics.ei_1[i]
+            ei_2 = belief_dynamics.ei_2[i]
 
             s_tplus1 += (cost + ((1/2) * ((ei_1 @ S_tplus1 @ np.transpose(ei_1)) + (ei_2 @ S_tplus1 @ np.transpose(ei_2)))))
 
             L_t = self.L[i]
 
-            mat_1 = (self.F[i] + (self.G[i] @ L_t))
-            mat_2 = (self.Fi_1[i] + (self.Gi_1[i] @ L_t))
-            mat_3 = (self.Fi_2[i] + (self.Gi_2[i] @ L_t))
+            mat_1 = (belief_dynamics.F[i] + (belief_dynamics.G[i] @ L_t))
+            mat_2 = (belief_dynamics.Fi_1[i] + (belief_dynamics.Gi_1[i] @ L_t))
+            mat_3 = (belief_dynamics.Fi_2[i] + (belief_dynamics.Gi_2[i] @ L_t))
             S_tplus1 = self.Q_t + (np.transpose(L_t) @ self.R_t @ L_t) + (np.transpose(mat_1) @ S_tplus1 @ mat_1) + (np.transpose(mat_2) @ S_tplus1 @ mat_2) + (np.transpose(mat_3) @ S_tplus1 @ mat_3)
         
         return np.real(s_tplus1)
@@ -257,19 +268,22 @@ class POMDPController:
         cur_belief = beliefs[0]
 
         for i in range(len(old_u)): 
-            u_bar = np.array(old_u[i])
-            b_bar = np.array(beliefs[i])
+            u_bar = old_u[i]
+            b_bar = beliefs[i]
 
             C = estimator.C[i]
             A = estimator.A[i]
             M = estimator.M[i]
 
-            x = cur_belief[0:2].reshape((2,))
+            x = cur_belief[0:2].reshape((2,1))
             cov = cur_belief[2:]
             cov = cov.reshape((2,2))
 
             measurement, N, N_diff = self.environment.get_measurement(x.flatten())
 
+            print((self.L[i] @ (cur_belief - b_bar)).shape)
+            print((step_size * self.l[i]).shape)
+            print(u_bar.shape)
             new_u_val = u_bar + (self.L[i] @ (cur_belief - b_bar)) + (step_size * self.l[i])
             new_u.append(new_u_val)
 
