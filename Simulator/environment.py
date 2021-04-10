@@ -38,15 +38,10 @@ class Environment:
         uncertainity_val = ((x) ** 2) / 2
         return uncertainity_val
     
-    def calc_uncertainity_derivative(self,x):
-        return (x)
-    
     def get_measurement(self, state):
 
         uncertainity_sig = self.calc_uncertainity(state[0])
         N = uncertainity_sig * np.identity(2)
-
-        uncertainity_der = self.calc_uncertainity_derivative(state[0])
         
         n_x = np.random.normal(0, 1)
         n_y = np.random.normal(0, 1)
@@ -57,5 +52,4 @@ class Environment:
         m_y = state[1] + (n_y * uncertainity_sig)
         measurement = np.array([[m_x], [m_y]])
 
-        N_diff = (uncertainity_der * np.identity(2)) @ n
-        return [measurement, N, N_diff]
+        return [measurement, N]

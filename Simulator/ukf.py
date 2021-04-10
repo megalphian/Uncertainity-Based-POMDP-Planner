@@ -24,7 +24,7 @@ class KalmanEstimator:
 
         self.x_est = [x]
         self.cov_est = [cov]
-        self.belief_states = [np.concatenate((x.flatten(), cov.flatten()))]
+        self.belief_states = [np.concatenate((x.flatten(), cov.flatten())).reshape((6,1))]
         self.W1 = [np.zeros((1,6))]
         self.W2 = [np.zeros((1,6))]
 
@@ -34,10 +34,10 @@ class KalmanEstimator:
             A = self.A[i]
             M = self.M[i]
 
-            measurement, N, N_diff = self.environment.get_measurement(x_actual.flatten())
-            input_i = np.asarray([[inputs[i][0]], [inputs[i][1]]])
+            measurement, N = self.environment.get_measurement(x_actual.flatten())
+            input_i = inputs[i]
 
-            belief, w1, w2, x, cov, x_actual = self.make_estimate(A, C, M, N, N_diff, cov, x, measurement, input_i)
+            belief, w1, w2, x, cov, x_actual = self.make_estimate(A, C, M, N, cov, x, measurement, input_i)
 
             self.belief_states.append(belief)
 
@@ -47,7 +47,7 @@ class KalmanEstimator:
             self.x_est.append(x)
             self.cov_est.append(cov)
 
-    def make_estimate(self, A, C, M, N, N_diff, cov, x, measurement, input_i):
+    def make_estimate(self, A, C, M, N, cov, x, measurement, input_i):
 
         A_cov = A @ cov
         tau = (A_cov) @ (np.transpose(A_cov)) + (M @ np.transpose(M))
@@ -57,7 +57,7 @@ class KalmanEstimator:
         w_term = sqrtm(K @ C @ tau)
         cov = sqrtm(tau - (K @ C @ tau))
         
-        input_steps = np.array([u * self.time_step for u in input_i]).reshape((2,1))
+        input_steps = input_i * self.time_step
         x_actual = A @ x + input_steps
 
         belief = np.concatenate((x_actual.flatten(), cov.flatten()))

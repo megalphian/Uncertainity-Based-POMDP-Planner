@@ -14,12 +14,12 @@ import numpy as np
 
 rect_limits = [-10, 15]
 resolution = 0.1
-path_resolution = 0.5
+path_resolution = 0.4
 time_step = 0.1
 
-end = (10, 10)
+start_hat = (10, 10)
 
-start_hat = (2, -2)
+end = (2, -2)
 cov_val = 0.25
 init_covariance = cov_val * np.identity(2)
 start_x = np.random.normal(start_hat[0], cov_val)
@@ -39,31 +39,32 @@ A, C, M, _ = init_system_matrices(len(inputs), 0)
 
 estimator = KalmanEstimator(A, C, M, env, time_step)
 
-current_u = inputs.copy()
+current_u = y=np.array([np.array(xi).reshape((2,1)) for xi in inputs])
 
 estimator.make_EKF_Estimates(start_hat, current_u, init_covariance)
 initial_x_est = estimator.x_est
 current_path = estimator.belief_states
 
-original_step_size = 0.1
+original_step_size = 1
 
 step_size = original_step_size
 trajectory_cost = np.inf
 epsilon = 50
 iteration_cap = 20
 
-for i in range(1):
-    print('new')
+for i in range(10):
     belief_dynamics = controller.calculate_linearized_belief_dynamics(current_path, current_u, estimator)
-    controller.calculate_value_matrices(belief_dynamics)
+    expected_cost = controller.calculate_value_matrices(belief_dynamics, current_path, current_u)
     
     line_search_iterations = 0
     while(line_search_iterations < iteration_cap):
         new_path, new_u = controller.get_new_path(current_path, current_u, estimator, step_size)
-        new_trajectory_cost = controller.calculate_trajectory_cost(new_path, new_u, belief_dynamics)
+        new_belief_dynamics = controller.calculate_linearized_belief_dynamics(new_path, new_u, estimator)
+        new_trajectory_cost = controller.calculate_value_matrices(new_belief_dynamics, new_path, new_u)
+        # new_trajectory_cost = controller.calculate_trajectory_cost(new_path, new_u, belief_dynamics)
         
         print(new_trajectory_cost)
-        if(new_trajectory_cost <= trajectory_cost or abs(trajectory_cost - new_trajectory_cost) < epsilon):
+        if(new_trajectory_cost <= expected_cost or abs(trajectory_cost - new_trajectory_cost) < epsilon):
             step_size = original_step_size
             break
         
