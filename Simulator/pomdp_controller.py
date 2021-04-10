@@ -144,9 +144,6 @@ class POMDPController:
         return linearized_dynamics
     
     def calculate_terminal_cost(self, terminal_belief):
-        # error = 1
-        # if(abs(terminal_belief[0] - self.goal[0]) > error or abs(terminal_belief[1] - self.goal[1]) > error):
-        #     return np.inf
         cost = np.transpose(terminal_belief) @ self.Q_l @ terminal_belief
         return cost[0][0]
 
@@ -307,7 +304,7 @@ class POMDPController:
 
             measurement, N = self.environment.get_measurement(x.flatten())
 
-            new_u_val = u_bar + (self.L[i] @ (cur_belief - b_bar)) + (step_size * self.l[i])
+            new_u_val = u_bar + ((self.L[i] @ (cur_belief - b_bar)) + (step_size * self.l[i]))
             new_u.append(new_u_val)
 
             new_b, _, _, _, _, _ = estimator.make_estimate(A, C, M, N, cov, x, measurement, new_u_val)

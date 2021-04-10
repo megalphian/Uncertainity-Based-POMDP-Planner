@@ -55,7 +55,7 @@ step_size = original_step_size
 epsilon = 50
 iteration_cap = 20
 
-for i in range(15):
+while(True):
     
     line_search_iterations = 0
     while(line_search_iterations < iteration_cap):
