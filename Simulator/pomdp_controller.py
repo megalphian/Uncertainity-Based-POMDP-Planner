@@ -3,22 +3,24 @@ import numpy as np
 class BeliefDynamicsData:
 
     def __init__(self):
-        self.F = None
-        self.Fi_1 = None
-        self.Fi_2 = None
 
-        self.G = None
-        self.Gi_1 = None
-        self.Gi_2 = None
+        self.F = list()
+        self.Fi_1 = list()
+        self.Fi_2 = list()
 
-        self.ei_1 = None
-        self.ei_2 = None
+        self.G = list()
+        self.Gi_1 = list()
+        self.Gi_2 = list()
+
+        self.ei_1 = list()
+        self.ei_2 = list()
 
 class POMDPController:
 
     def __init__(self, optimal_path, environment):
 
         self.path_0 = optimal_path
+        self.goal = np.asarray(optimal_path[-1])
         self.u_bar = None
 
         self.environment = environment
@@ -26,8 +28,6 @@ class POMDPController:
         self.Q_t = np.identity(6)
         self.R_t = np.identity(2)
         self.Q_l = 10 * len(self.path_0) * np.identity(6)
-
-        self.trajectory_cost = np.inf
 
     def compute_u_bar(self):
 
@@ -49,17 +49,6 @@ class POMDPController:
         h = 0.5
 
         linearized_dynamics = BeliefDynamicsData()
-
-        linearized_dynamics.F = list()
-        linearized_dynamics.Fi_1 = list()
-        linearized_dynamics.Fi_2 = list()
-
-        linearized_dynamics.G = list()
-        linearized_dynamics.Gi_1 = list()
-        linearized_dynamics.Gi_2 = list()
-
-        linearized_dynamics.ei_1 = list()
-        linearized_dynamics.ei_2 = list()
 
         for i in range(len(inputs)):
 
@@ -155,6 +144,9 @@ class POMDPController:
         return linearized_dynamics
     
     def calculate_terminal_cost(self, terminal_belief):
+        # error = 1
+        # if(abs(terminal_belief[0] - self.goal[0]) > error or abs(terminal_belief[1] - self.goal[1]) > error):
+        #     return np.inf
         cost = np.transpose(terminal_belief) @ self.Q_l @ terminal_belief
         return cost[0][0]
 
@@ -179,7 +171,7 @@ class POMDPController:
 
         belief_l = beliefs[-1]
         s_tplus1_vec = []
-        h = 0.5
+        h = 0.1
 
         for j in range(len(belief_l)):
             b_1 = belief_l.copy()
@@ -255,32 +247,43 @@ class POMDPController:
             l_t = - (np.linalg.inv(D_t) @ d_t)
             self.l.insert(0, l_t)
 
-            mat_1 = (belief_dynamics.F[t] + (belief_dynamics.G[t] @ L_t))
-            mat_2 = (belief_dynamics.Fi_1[t] + (belief_dynamics.Gi_1[t] @ L_t))
-            mat_3 = (belief_dynamics.Fi_2[t] + (belief_dynamics.Gi_2[t] @ L_t))
+            # Calculate Ct
+            C_t = self.Q_t + (np.transpose(belief_dynamics.F[t]) @ S_tplus1 @ belief_dynamics.F[t]) + (np.transpose(belief_dynamics.Fi_1[t]) @ S_tplus1 @ belief_dynamics.Fi_1[t]) + (np.transpose(belief_dynamics.Fi_2[t]) @ S_tplus1 @ belief_dynamics.Fi_2[t])
+            self.C.insert(0, C_t)
+
+            c_t = q_t + (np.transpose(belief_dynamics.F[t]) @ s_tplus1_vec) + (np.transpose(belief_dynamics.Fi_1[t]) @ S_tplus1 @ belief_dynamics.ei_1[t]) + (np.transpose(belief_dynamics.Fi_2[t]) @ S_tplus1 @ belief_dynamics.ei_2[t])
             
-            S_t = self.Q_t + (np.transpose(L_t) @ self.R_t @ L_t) + (np.transpose(mat_1) @ S_tplus1 @ mat_1) + (np.transpose(mat_2) @ S_tplus1 @ mat_2) + (np.transpose(mat_3) @ S_tplus1 @ mat_3)
+            S_t = C_t - (np.transpose(E_t) @ (np.linalg.inv(D_t) @ E_t))
+            s_tplus1_vec = c_t - (np.transpose(E_t) @ (np.linalg.inv(D_t) @ d_t))
 
             self.S.insert(0, S_t)
             S_tplus1 = S_t
 
-            ei_1 = belief_dynamics.ei_1[t]
-            ei_2 = belief_dynamics.ei_2[t]
+    def calculate_trajectory_cost(self, beliefs, inputs, belief_dynamics):
+ 
+        S_tplus1 = self.Q_l
+        terminal_belief = beliefs[-1]
+        s_tplus1 = self.calculate_terminal_cost(terminal_belief)
 
-            s_tplus1_vec = q_t + (np.transpose(L_t) @ r_t) + (np.transpose(mat_1) @ s_tplus1_vec) + (np.transpose(mat_1) @ S_tplus1 @ ei_1) + (np.transpose(mat_1) @ S_tplus1 @ ei_2)
-
+        for i in reversed(range(len(inputs))):
+            belief = beliefs[i]
+            input_i = inputs[i]
             cost = self.calculate_stage_cost(belief, input_i)
+
+            ei_1 = belief_dynamics.ei_1[i]
+            ei_2 = belief_dynamics.ei_2[i]
+
             stage_addition = np.real((cost + ((1/2) * ((np.transpose(ei_1) @ S_tplus1 @ ei_1) + (np.transpose(ei_2) @ S_tplus1 @ ei_2)))))[0][0]
             s_tplus1 += stage_addition
 
-            # # Calculate Ct
-            # C_t = self.Q_t + (np.transpose(belief_dynamics.F[t]) @ S_tplus1 @ belief_dynamics.F[t]) 
-            # # + (np.transpose(belief_dynamics.Fi_1[t]) @ S_tplus1 @ belief_dynamics.Fi_1[t]) + (np.transpose(belief_dynamics.Fi_2[t]) @ S_tplus1 @ belief_dynamics.Fi_2[t])
-            # self.C.insert(0, C_t)
+            L_t = self.L[i]
 
-            # c_t = q_t + (np.transpose(belief_dynamics.F[t]) @ s_tplus1) + (np.transpose(belief_dynamics.Fi_1[t]) @ S_tplus1 @ belief_dynamics.ei_1[t]) + (np.transpose(belief_dynamics.Fi_2[t]) @ S_tplus1 @ belief_dynamics.ei_2[t])
-
-        return s_tplus1
+            mat_1 = (belief_dynamics.F[i] + (belief_dynamics.G[i] @ L_t))
+            mat_2 = (belief_dynamics.Fi_1[i] + (belief_dynamics.Gi_1[i] @ L_t))
+            mat_3 = (belief_dynamics.Fi_2[i] + (belief_dynamics.Gi_2[i] @ L_t))
+            S_tplus1 = self.Q_t + (np.transpose(L_t) @ self.R_t @ L_t) + (np.transpose(mat_1) @ S_tplus1 @ mat_1) + (np.transpose(mat_2) @ S_tplus1 @ mat_2) + (np.transpose(mat_3) @ S_tplus1 @ mat_3)
+        
+        return np.real(s_tplus1)
 
     def get_new_path(self, beliefs, old_u, estimator, step_size):
         new_u = list()
