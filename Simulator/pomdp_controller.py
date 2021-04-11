@@ -23,7 +23,7 @@ class POMDPController:
 
         self.Q_t = np.identity(6)
         self.R_t = np.identity(2)
-        self.Q_l = 10 * steps * np.identity(6)
+        self.Q_l = 100 * steps * np.identity(6)
 
     def calculate_linearized_belief_dynamics(self, beliefs, inputs, estimator):
 
@@ -127,7 +127,8 @@ class POMDPController:
     def calculate_terminal_cost(self, terminal_belief, end):
         # if(abs(end[0] - terminal_belief[0]) > 0.5 or abs(end[1] - terminal_belief[1]) > 0.5):
         #     return 1000000
-        cost = (np.transpose(terminal_belief) @ self.Q_l @ terminal_belief) + (end[0] - terminal_belief[0])**2 + (end[1] - terminal_belief[1])**2
+        cost = (np.transpose(terminal_belief) @ self.Q_l @ terminal_belief) 
+        # cost += (1000 * (end[0] - terminal_belief[0])**2) + (1000 * (end[1] - terminal_belief[1])**2)
         return cost[0][0]
 
     def calculate_stage_cost(self, belief, input_i):

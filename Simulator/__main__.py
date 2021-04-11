@@ -14,13 +14,13 @@ import numpy as np
 
 rect_limits = [-10, 15]
 resolution = 0.1
-path_resolution = 0.4
-time_step = 0.5
+path_resolution = 0.2
+time_step = 1
 
-start_hat = (2, 5)
-end = (-6, -2)
+start_hat = (-8, 5)
+end = (0, 0)
 
-cov_val = 1
+cov_val = 0.25
 init_covariance = cov_val * np.identity(2)
 start_x = np.random.normal(start_hat[0], cov_val)
 start_y = np.random.normal(start_hat[1], cov_val)
@@ -52,7 +52,7 @@ controller.calculate_value_matrices(belief_dynamics, current_path, current_u)
 trajectory_cost = controller.calculate_trajectory_cost(current_path, current_u, belief_dynamics, end)
 
 step_size = original_step_size
-epsilon = 50 # Don't change or everything gets gross!!
+epsilon = 0 # Don't change or everything gets gross!!
 iteration_cap = 20
 
 while(True):
