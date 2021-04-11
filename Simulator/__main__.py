@@ -15,9 +15,9 @@ import numpy as np
 rect_limits = [-10, 15]
 resolution = 0.1
 path_resolution = 0.1
-time_step = 0.5
+time_step = 1
 
-start_hat = (-8, 5)
+start_hat = (-4, -8)
 end = (0, 0)
 
 cov_val = 0.25
