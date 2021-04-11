@@ -60,10 +60,10 @@ class KalmanEstimator:
         input_steps = input_i * self.time_step
         x_actual = A @ x + input_steps
 
+        x = x_actual + (K @ (measurement - (C @ x)))
+
         belief = np.concatenate((x_actual.flatten(), cov.flatten()))
         belief = belief.reshape((6,1))
-
-        x = x_actual + (K @ (measurement - (C @ x)))
 
         zeros = np.zeros((1,4))
         w1 = np.concatenate((w_term[:,0].flatten(), zeros.flatten()))
