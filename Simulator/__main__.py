@@ -14,8 +14,8 @@ import numpy as np
 
 rect_limits = [-10, 15]
 resolution = 0.1
-path_resolution = 0.2
-time_step = 1
+path_resolution = 0.1
+time_step = 0.5
 
 start_hat = (-8, 5)
 end = (0, 0)

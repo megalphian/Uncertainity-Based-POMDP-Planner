@@ -35,7 +35,7 @@ class Environment:
             self.uncertainity_distribution.append(uncertainity_val)
     
     def calc_uncertainity(self, x):
-        uncertainity_val = ((x - 7 ) ** 2)
+        uncertainity_val = ((x - 8) ** 2)
         return uncertainity_val
     
     def get_measurement(self, state):
