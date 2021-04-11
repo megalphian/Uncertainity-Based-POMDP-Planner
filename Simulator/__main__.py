@@ -14,13 +14,14 @@ import numpy as np
 
 rect_limits = [-10, 15]
 resolution = 0.1
-path_resolution = 0.1
-time_step = 1
+path_resolution = 0.5
+time_step = 0.5
 
-start_hat = (-4, -8)
-end = (0, 0)
+end = (-5, -8)
+start_hat = (-1, 7)
+env = Environment(rect_limits, resolution)
 
-cov_val = 0.25
+cov_val = 2
 init_covariance = cov_val * np.identity(2)
 start_x = np.random.normal(start_hat[0], cov_val)
 start_y = np.random.normal(start_hat[1], cov_val)
@@ -29,7 +30,6 @@ start = np.array((start_x, start_y)).reshape((2,1))
 
 obstacles = []
 
-env = Environment(rect_limits, resolution)
 opt_planner = StraightLinePlanner(start_hat, end, path_resolution, time_step)
 path, inputs = opt_planner.generatePath()
 
@@ -52,8 +52,7 @@ controller.calculate_value_matrices(belief_dynamics, current_path, current_u)
 trajectory_cost = controller.calculate_trajectory_cost(current_path, current_u, belief_dynamics, end)
 
 step_size = original_step_size
-epsilon = 0 # Don't change or everything gets gross!!
-iteration_cap = 20
+iteration_cap = 100
 
 while(True):
     line_search_iterations = 0
@@ -61,7 +60,7 @@ while(True):
         new_path, new_u = controller.get_new_path(current_path, current_u, estimator, step_size)
         new_trajectory_cost = controller.calculate_trajectory_cost(new_path, new_u, belief_dynamics, end)
         
-        if(new_trajectory_cost <= trajectory_cost or abs(trajectory_cost - new_trajectory_cost) < epsilon):
+        if(new_trajectory_cost <= trajectory_cost):
             step_size = original_step_size
             break
         
@@ -69,7 +68,7 @@ while(True):
         step_size = step_size/2
         print('Keep looking')
 
-    if(trajectory_cost - new_trajectory_cost < epsilon):
+    if(trajectory_cost <= new_trajectory_cost):
         break
 
     trajectory_cost = new_trajectory_cost

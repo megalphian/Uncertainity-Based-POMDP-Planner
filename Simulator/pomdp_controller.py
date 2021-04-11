@@ -125,9 +125,13 @@ class POMDPController:
         return linearized_dynamics
     
     def calculate_terminal_cost(self, terminal_belief, end):
-        # if(abs(end[0] - terminal_belief[0]) > 0.5 or abs(end[1] - terminal_belief[1]) > 0.5):
-        #     return 1000000
-        cost = (np.transpose(terminal_belief) @ self.Q_l @ terminal_belief) 
+        
+        ideal_end_belief = np.zeros((6,1))
+        ideal_end_belief[0] = end[0]
+        ideal_end_belief[1] = end[1]
+        belief_diff = terminal_belief - ideal_end_belief
+
+        cost = (np.transpose(belief_diff) @ self.Q_l @ belief_diff) 
         # cost += (1000 * (end[0] - terminal_belief[0])**2) + (1000 * (end[1] - terminal_belief[1])**2)
         return cost[0][0]
 
