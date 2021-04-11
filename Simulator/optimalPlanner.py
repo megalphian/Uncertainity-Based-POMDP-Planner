@@ -20,7 +20,7 @@ class StraightLinePlanner:
         self.inputs = list()
 
         self.dist = np.sqrt(((self.goal[1] - self.start[1])**2) + ((self.goal[0] - self.start[0])**2))
-        self.steps = round(self.dist/ self.path_resolution)
+        self.steps = round(self.dist/ (self.path_resolution))
 
         self.sin_angle = np.arcsin((goal[1] - start[1])/ self.dist)
         self.cos_angle = np.arccos((goal[0] - start[0])/ self.dist)
@@ -36,7 +36,7 @@ class StraightLinePlanner:
             u_x = u_x/self.time_step
             u_y = u_y/self.time_step
             
-            self.path.append([x,y])
             self.inputs.append([u_x, u_y])
+            self.path.append([x,y])            
         
         return (self.path, self.inputs)

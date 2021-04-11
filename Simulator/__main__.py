@@ -8,19 +8,19 @@ from shapely.geometry import Polygon
 from matplotlib import pyplot as plt
 
 from stateNode import init_system_matrices
-from ukf import KalmanEstimator
+from ekf import KalmanEstimator
 
 import numpy as np
 
 rect_limits = [-10, 15]
 resolution = 0.1
-path_resolution = 0.5
-time_step = 0.1
+path_resolution = 0.4
+time_step = 0.5
 
-start_hat = (2, 10)
+start_hat = (2, 5)
+end = (-6, -2)
 
-end = (4, -2)
-cov_val = 0.25
+cov_val = 1
 init_covariance = cov_val * np.identity(2)
 start_x = np.random.normal(start_hat[0], cov_val)
 start_y = np.random.normal(start_hat[1], cov_val)
@@ -33,36 +33,33 @@ env = Environment(rect_limits, resolution)
 opt_planner = StraightLinePlanner(start_hat, end, path_resolution, time_step)
 path, inputs = opt_planner.generatePath()
 
-controller = POMDPController(path, env)
+controller = POMDPController(env, len(path))
 
 A, C, M, _ = init_system_matrices(len(inputs), 0)
 
 estimator = KalmanEstimator(A, C, M, env, time_step)
-
 current_u = np.array([np.array(xi).reshape((2,1)) for xi in inputs])
-
 estimator.make_EKF_Estimates(start_hat, current_u, init_covariance)
+
 initial_x_est = estimator.x_est
 current_path = estimator.belief_states
 
 original_step_size = 1
 
 belief_dynamics = controller.calculate_linearized_belief_dynamics(current_path, current_u, estimator)
+
 controller.calculate_value_matrices(belief_dynamics, current_path, current_u)
-trajectory_cost = controller.calculate_trajectory_cost(current_path, current_u, belief_dynamics)
+trajectory_cost = controller.calculate_trajectory_cost(current_path, current_u, belief_dynamics, end)
 
 step_size = original_step_size
-epsilon = 100 # Don't change or everything gets gross!!
+epsilon = 50 # Don't change or everything gets gross!!
 iteration_cap = 20
 
 while(True):
-    
     line_search_iterations = 0
     while(line_search_iterations < iteration_cap):
         new_path, new_u = controller.get_new_path(current_path, current_u, estimator, step_size)
-        new_belief_dynamics = controller.calculate_linearized_belief_dynamics(new_path, new_u, estimator)
-        controller.calculate_value_matrices(new_belief_dynamics, new_path, new_u)
-        new_trajectory_cost = controller.calculate_trajectory_cost(new_path, new_u, belief_dynamics)
+        new_trajectory_cost = controller.calculate_trajectory_cost(new_path, new_u, belief_dynamics, end)
         
         if(new_trajectory_cost <= trajectory_cost or abs(trajectory_cost - new_trajectory_cost) < epsilon):
             step_size = original_step_size
@@ -79,12 +76,12 @@ while(True):
     current_u = new_u
     current_path = new_path
 
-    # start_belief = current_path[0]
-    # start_new = start_belief[0:2].flatten()
+    start_belief = current_path[0]
+    start_new = start_belief[0:2].flatten()
 
-    # cov = start_belief[2:]
-    # cov = cov.reshape((2,2))
-    # estimator.make_EKF_Estimates(start_new, current_u, cov)
+    cov = start_belief[2:]
+    cov = cov.reshape((2,2))
+    estimator.make_EKF_Estimates(start_new, current_u, cov)
 
     belief_dynamics = controller.calculate_linearized_belief_dynamics(current_path, current_u, estimator)
     controller.calculate_value_matrices(belief_dynamics, current_path, current_u)
