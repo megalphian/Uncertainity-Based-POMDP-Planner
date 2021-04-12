@@ -1,8 +1,8 @@
 {
     "common_config":{
-        "time_step": 1,
-        "start_hat": [-8, -4],
-        "goal": [-5, 4],
+        "time_step": 0.5,
+        "start_hat": [-7, -4],
+        "goal": [-4, 4],
         "init_cov_val": 2,
         "iteration_cap": 120
     },
@@ -13,9 +13,9 @@
     "environment_config": {
         "env_limits": [-10, 15],
         "viz_resolution": 0.1,
-        "light_coord_x": 0
+        "light_coord_x": 8
     },
     "straight_line_planner_config": {
-        "velocity": 1
+        "velocity": 0.5
     }
 }

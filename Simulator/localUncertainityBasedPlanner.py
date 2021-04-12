@@ -23,13 +23,10 @@ class LocalUncertainityBasedPlanner:
 
     def optimize_plan_with_uncertainity(self):
 
-        current_path = self.current_path
-        current_u = self.current_u
-
         belief_dynamics = self.controller.calculate_linearized_belief_dynamics(self.current_path, self.current_u, self.estimator)
 
         self.controller.calculate_value_matrices(belief_dynamics, self.current_path, self.current_u)
-        trajectory_cost = self.controller.calculate_trajectory_cost(current_path, current_u, belief_dynamics, self.goal)
+        trajectory_cost = self.controller.calculate_trajectory_cost(self.current_path, self.current_u, belief_dynamics, self.goal)
         print('Original Trajectory Cost: ' + str(trajectory_cost))
 
         start_cost = trajectory_cost
@@ -42,7 +39,7 @@ class LocalUncertainityBasedPlanner:
             
             line_search_iterations = 0
             while(line_search_iterations < iteration_cap):
-                new_path, new_u = self.controller.get_new_path(current_path, current_u, self.estimator, step_size)
+                new_path, new_u = self.controller.get_new_path(self.current_path, self.current_u, self.estimator, step_size)
                 new_trajectory_cost = self.controller.calculate_trajectory_cost(new_path, new_u, belief_dynamics, self.goal)
                 
                 if(new_trajectory_cost <= trajectory_cost):
@@ -62,15 +59,15 @@ class LocalUncertainityBasedPlanner:
 
             print('Updated Path! Cost: ' + str(trajectory_cost))
 
-            start_belief = current_path[0]
+            start_belief = self.current_path[0]
             start_new = start_belief[0:2].flatten()
 
             cov = start_belief[2:]
             cov = cov.reshape((2,2))
-            self.estimator.make_EKF_Estimates(start_new, current_u, cov)
+            self.estimator.make_EKF_Estimates(start_new, self.current_u, cov)
 
-            belief_dynamics = self.controller.calculate_linearized_belief_dynamics(current_path, current_u, self.estimator)
-            self.controller.calculate_value_matrices(belief_dynamics, current_path, current_u)
+            belief_dynamics = self.controller.calculate_linearized_belief_dynamics(self.current_path, self.current_u, self.estimator)
+            self.controller.calculate_value_matrices(belief_dynamics, self.current_path, self.current_u)
 
         print('==================================================')
         print('Final Trajectory cost: ' + str(trajectory_cost))

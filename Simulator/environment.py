@@ -40,7 +40,7 @@ class Environment:
         return uncertainity_distribution
     
     def calc_uncertainity(self, x):
-        uncertainity_val = ((x - self.light_coord) ** 2) * 2  # Adopted from Platt et. al. 2012
+        uncertainity_val = ((x - self.light_coord) ** 2) # Adopted from Platt et. al. 2012
         return uncertainity_val
     
     def get_measurement(self, state):

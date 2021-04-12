@@ -3,11 +3,11 @@
         "time_step": 1,
         "start_hat": [-2, -8],
         "goal": [2, 7],
-        "init_cov_val": 1,
+        "init_cov_val": 0.5,
         "iteration_cap": 120
     },
     "cost_function_config":{
-        "terminal_cost_multiplier": 100,
+        "terminal_cost_multiplier": 10,
         "stage_cost_multiplier": 1
     },
     "environment_config": {
@@ -16,6 +16,6 @@
         "light_coord_x": -5
     },
     "straight_line_planner_config": {
-        "velocity": 1
+        "velocity": 0.5
     }
 }
