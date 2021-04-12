@@ -4,8 +4,6 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 
-from shapely.geometry import Point
-
 class OptimalPath:
 
     def __init__(self, path, inputs):
