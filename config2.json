@@ -3,7 +3,7 @@
         "time_step": 1,
         "start_hat": [2, 7],
         "goal": [-2, -8],
-        "init_cov_val": 2,
+        "init_cov_val": 1,
         "iteration_cap": 120
     },
     "cost_function_config":{
