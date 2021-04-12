@@ -5,9 +5,12 @@ import numpy as np
 
 class LocalUncertainityBasedPlanner:
 
-    def __init__(self, optimal_path, env, start_hat, config, init_cov_mat):
+    def __init__(self, optimal_path, env, config):
 
-        self.controller = POMDPController(env, optimal_path.get_path_length(), config.common_config.cost_multiplier)
+        start_hat = optimal_path.start_point.start_hat
+        init_cov_mat = optimal_path.start_point.init_cov_mat
+
+        self.controller = POMDPController(env, optimal_path.get_path_length(), config.cost_function_config)
         self.estimator = KalmanEstimator(env, config.common_config.time_step, optimal_path.get_control_length(), 0)
         
         self.current_u = np.array([np.array(xi).reshape((2,1)) for xi in optimal_path.inputs])
