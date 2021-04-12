@@ -1,4 +1,5 @@
 shapely
 matplotlib
-descartes
 numpy
+scipy
+json

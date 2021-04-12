@@ -1,0 +1,18 @@
+{
+    "common_config":{
+        "time_step": 0.5,
+        "start_hat": [-1, 7],
+        "goal": [-5, -8],
+        "init_cov_val": 2,
+        "iteration_cap": 120,
+        "cost_multiplier": 1000
+    },
+    "environment_config": {
+        "env_limits": [-10, 15],
+        "viz_resolution": 0.1,
+        "light_coord_x": 8
+    },
+    "straight_line_planner_config": {
+        "path_resolution": 0.5
+    }
+}

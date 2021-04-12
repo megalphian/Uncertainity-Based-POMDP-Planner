@@ -3,19 +3,19 @@ import numpy as np
 
 class Environment:
 
-    def __init__(self, rect_limits, sampling_resolution):
+    def __init__(self, environment_config):
         
-        self.rect_limits = rect_limits
-        self.resolution = sampling_resolution
+        self.rect_limits = environment_config.env_limits
+        self.resolution = environment_config.viz_resolution
+        self.light_coord = environment_config.light_coord_x
+        
         self.coords = self.getPolygonBounds()
-
         self.boundary = Polygon(self.coords)
         
         self.sampled_points = self.sample_environment()
         
         # Holds the uncertainity
-        self.uncertainity_distribution = list()
-        self.set_uncertainity()
+        self.uncertainity_distribution = self.set_uncertainity()
     
     def sample_environment(self):
         x, y = np.meshgrid(np.arange(self.rect_limits[0],self.rect_limits[1],self.resolution), np.arange(self.rect_limits[0],self.rect_limits[1],self.resolution))
@@ -29,13 +29,18 @@ class Environment:
             (self.rect_limits[0], self.rect_limits[1]))
 
     def set_uncertainity(self):
+        uncertainity_distribution = list()
+
         for point in self.sampled_points:
             x = point[0]
+            y = point[1]
             uncertainity_val = self.calc_uncertainity(x)
-            self.uncertainity_distribution.append(uncertainity_val)
+            uncertainity_distribution.append(uncertainity_val)
+
+        return uncertainity_distribution
     
     def calc_uncertainity(self, x):
-        uncertainity_val = ((x - 11) ** 2)
+        uncertainity_val = ((x - self.light_coord) ** 2)
         return uncertainity_val
     
     def get_measurement(self, state):

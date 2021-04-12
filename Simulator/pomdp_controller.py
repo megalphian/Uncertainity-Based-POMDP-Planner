@@ -17,13 +17,13 @@ class BeliefDynamicsData:
 
 class POMDPController:
 
-    def __init__(self, environment, steps):
+    def __init__(self, environment, steps, cost_multiplier):
 
         self.environment = environment
 
         self.Q_t = np.identity(6)
         self.R_t = np.identity(2)
-        self.Q_l = 100 * steps * np.identity(6)
+        self.Q_l = cost_multiplier * steps * np.identity(6)
 
     def calculate_linearized_belief_dynamics(self, beliefs, inputs, estimator):
 

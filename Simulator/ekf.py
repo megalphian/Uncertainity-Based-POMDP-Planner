@@ -3,7 +3,7 @@ import numpy as np
 
 class KalmanEstimator:
 
-    def __init__(self, A, C, M, environment, time_step):
+    def __init__(self, environment, time_step, step_count, m_multiplier):
         self.x_est = None
         self.cov_est = None
 
@@ -11,15 +11,13 @@ class KalmanEstimator:
         self.W1 = None
         self.W2 = None
 
-        self.A = A
-        self.C = C
-        self.M = M
+        self.init_system_matrices(step_count, m_multiplier)
         self.environment = environment
         self.time_step = time_step
 
-    def make_EKF_Estimates(self, init_state, inputs, init_cov):
+    def make_EKF_Estimates(self, init_est, inputs, init_cov):
         cov = sqrtm(init_cov)
-        x = np.asarray([[init_state[0]], [init_state[1]]])
+        x = np.asarray([[init_est[0]], [init_est[1]]])
         x_actual = x
 
         self.x_est = [x]
@@ -73,3 +71,13 @@ class KalmanEstimator:
         w2 = w2.reshape((6,1))
 
         return (belief, w1, w2, x, cov, x_actual)
+    
+    def init_system_matrices(self, iterations, m_multiplier):
+        self.A = list()
+        self.C = list()
+        self.M = list()
+
+        for i in range(iterations):
+            self.A.append(np.identity(2))
+            self.M.append(m_multiplier * np.identity(2))
+            self.C.append(np.identity(2))
