@@ -45,6 +45,8 @@ if __name__ == "__main__":
     ax.plot([x for (x, y) in planner.initial_x_est], [y for (x, y) in planner.initial_x_est], '.-.', color='#D00000', label='EKF Estimated Path')
     ax.plot([x for (x, y, _, _, _, _) in planner.current_path], [y for (x, y, _, _, _, _) in planner.current_path], '-o', label='Uncertainity-Minimizing Path')
 
+    ax.legend()
+
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111, projection='3d')
 

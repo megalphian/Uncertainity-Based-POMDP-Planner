@@ -7,7 +7,7 @@
         "iteration_cap": 120
     },
     "cost_function_config":{
-        "terminal_cost_multiplier": 10,
+        "terminal_cost_multiplier": 100,
         "stage_cost_multiplier": 1
     },
     "environment_config": {
