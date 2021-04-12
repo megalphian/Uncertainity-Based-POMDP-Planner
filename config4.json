@@ -1,9 +1,9 @@
 {
     "common_config":{
-        "time_step": 0.5,
-        "start_hat": [-7, -4],
-        "goal": [-4, 4],
-        "init_cov_val": 2,
+        "time_step": 1,
+        "start_hat": [-10, 8],
+        "goal": [0, -2],
+        "init_cov_val": 2.5,
         "iteration_cap": 120
     },
     "cost_function_config":{

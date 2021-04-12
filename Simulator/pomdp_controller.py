@@ -17,13 +17,16 @@ class BeliefDynamicsData:
 
 class POMDPController:
 
-    def __init__(self, environment, steps, cost_multiplier):
+    def __init__(self, environment, steps, cost_config):
 
         self.environment = environment
 
-        self.Q_t = np.identity(6)
-        self.R_t = np.identity(2)
-        self.Q_l = cost_multiplier * steps * np.identity(6)
+        terminal_cost_multiplier = cost_config.terminal_cost_multiplier
+        stage_cost_multiplier = cost_config.stage_cost_multiplier
+
+        self.Q_t = stage_cost_multiplier * np.identity(6)
+        self.R_t = stage_cost_multiplier * np.identity(2)
+        self.Q_l = terminal_cost_multiplier * steps * np.identity(6)
 
     def calculate_linearized_belief_dynamics(self, beliefs, inputs, estimator):
 
@@ -132,7 +135,6 @@ class POMDPController:
         belief_diff = terminal_belief - ideal_end_belief
 
         cost = (np.transpose(belief_diff) @ self.Q_l @ belief_diff) 
-        # cost += (1000 * (end[0] - terminal_belief[0])**2) + (1000 * (end[1] - terminal_belief[1])**2)
         return cost[0][0]
 
     def calculate_stage_cost(self, belief, input_i):
