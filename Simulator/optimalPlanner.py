@@ -6,12 +6,20 @@ import numpy as np
 
 class StartPoint:
 
+    """
+    Data class to store the staring point
+    """
+
     def __init__(self, start_hat, init_cov_val):
 
         self.start_hat = start_hat
         self.init_cov_mat = init_cov_val * np.identity(2)
         
 class OptimalPath:
+
+    """
+    Data class to store the initial uncertainity unaware path
+    """
 
     def __init__(self, path, inputs, start_point, goal):
         self.path = path
@@ -26,6 +34,12 @@ class OptimalPath:
         return len(self.inputs)
 
 class StraightLinePlanner:
+
+    """
+    Path planner to generate a straight-line path from the start to the goal.
+    This planner is not aware of the uncertainity in the environment and starts at the initial belief.
+    """
+
     def __init__(self, common_config, straight_line_planner_config):
 
         # Initial starting belief

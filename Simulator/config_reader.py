@@ -2,7 +2,7 @@ import json
 
 class CommonConfig:
     """
-    Summary: Configration data container for the program
+    Summary: Configration data container for the overall program
     """
 
     def __init__(self, common_config):
@@ -37,7 +37,7 @@ class EnvironmentConfig:
 class CostFunctionConfig:
 
     """
-    Summary: Configration data container for the environment
+    Summary: Configration data container for the cost function
     """
 
     def __init__(self, environment_config):

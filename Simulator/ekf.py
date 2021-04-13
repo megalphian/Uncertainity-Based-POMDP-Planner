@@ -3,6 +3,11 @@ import numpy as np
 
 class KalmanEstimator:
 
+    """
+    An extended Kalman filter estimator to compute the belief at time t of the trajectory traversal.
+    The class also applies the system dynamics to get the belief for t+1, which is used across the program
+    """
+
     def __init__(self, environment, time_step, step_count, m_multiplier):
         self.x_est = None
         self.cov_est = None
@@ -16,6 +21,10 @@ class KalmanEstimator:
         self.time_step = time_step
 
     def make_EKF_Estimates(self, init_est, inputs, init_cov):
+
+        # Given a start point for a trajectory and its inputs and inital covariance, 
+        # estimate the belief state for each point in the trajectory
+
         cov = sqrtm(init_cov)
         x = np.asarray([[init_est[0]], [init_est[1]]])
         x_actual = x
@@ -35,7 +44,7 @@ class KalmanEstimator:
             measurement, N = self.environment.get_measurement(x_actual.flatten())
             input_i = inputs[i]
 
-            belief, w1, w2, x, cov, x_actual = self.make_estimate(A, C, M, N, cov, x, measurement, input_i)
+            belief, w1, w2, x, cov, x_actual = self.apply_dynamics_and_estimate_tplus1(A, C, M, N, cov, x, measurement, input_i)
 
             self.belief_states.append(belief)
 
@@ -45,7 +54,10 @@ class KalmanEstimator:
             self.x_est.append(x)
             self.cov_est.append(cov)
 
-    def make_estimate(self, A, C, M, N, cov, x, measurement, input_i):
+    def apply_dynamics_and_estimate_tplus1(self, A, C, M, N, cov, x, measurement, input_i):
+
+        # Given a state, measurement and the system dynamics matrices for time t, compute the belief at time t+1
+        # Also compute the belief state covariance at time t+1
 
         A_cov = A @ cov
         tau = (A_cov) @ (np.transpose(A_cov)) + (M @ np.transpose(M))

@@ -9,6 +9,8 @@ import os
 from matplotlib import pyplot as plt
 import numpy as np
 
+# Parse input config file
+
 parser = argparse.ArgumentParser(description='Config file for simulation')
 parser.add_argument('--config', type=str, help='path of config file to override default')
 
@@ -21,14 +23,19 @@ if __name__ == "__main__":
     if args.config:
         config_file_path = args.config
 
+    # Parse simulator config
     config = ConfigParser(config_file_path)
-    env = Environment(config.environment_config)
 
+    # Configure the environment and the straight-line planner for the start and goal points
+    env = Environment(config.environment_config)
     opt_planner = StraightLinePlanner(config.common_config, config.straight_line_planner_config)
     optimal_path = opt_planner.generatePath()
 
-    planner = LocalUncertainityBasedPlanner(optimal_path, env, config)
+    # Configure and optimize the straight-line path to a locally optimal path that minimizes uncertainity along the way
+    planner = LocalUncertainityBasedPlanner(optimal_path, env, config.common_config, config.cost_function_config)
     planner.optimize_plan_with_uncertainity()
+
+    # Create the plot to show the optimal path, EKF estimations and the uncertainity minimizing path
 
     fig, ax = plt.subplots()
 
@@ -46,6 +53,8 @@ if __name__ == "__main__":
     ax.plot([x for (x, y, _, _, _, _) in planner.current_path], [y for (x, y, _, _, _, _) in planner.current_path], '-o', label='Uncertainity-Minimizing Path')
 
     ax.legend()
+
+    # Create a plot to show the uncertainity distribution across the environment
 
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111, projection='3d')
