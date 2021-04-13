@@ -45,6 +45,8 @@ if __name__ == "__main__":
     x, y = zip(*env.sampled_points)
     ax.scatter(x, y, c=env.uncertainity_distribution, cmap='winter_r')
 
+    ax.axvline(env.light_coord, color='Yellow', label='Light Coordinate')
+
     ax.text(optimal_path.start_point.start_hat[0], optimal_path.start_point.start_hat[1], 'Start Point')
     ax.text(optimal_path.goal[0], optimal_path.goal[1], 'Goal')
 
