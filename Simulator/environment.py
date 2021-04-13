@@ -1,4 +1,3 @@
-from shapely.geometry import Polygon
 import numpy as np
 
 class Environment:
@@ -10,7 +9,6 @@ class Environment:
         self.light_coord = environment_config.light_coord_x
         
         self.coords = self.getPolygonBounds()
-        self.boundary = Polygon(self.coords)
         
         self.sampled_points = self.sample_environment()
         
