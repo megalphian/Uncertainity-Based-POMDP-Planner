@@ -29,7 +29,14 @@ For example:
 python Simulator --config config1.json
 ```
 
-**Note:** When using the provided config files, please change the current directory to the project folder. For Linux and Mac
+## Notes:
+1) When using the provided config files, please change the current directory to the project folder. For Linux and Mac
 ```
 cd kalman-based-pomdp-optimizer
 ```
+2) When testing the Simulator, I have noticed that the path sometimes does not optimize to a lower cost path and the original path is retained. I wasn't able to debug this issue, but re-running the simulator one or two times seems to fix the issue. 
+
+## On choosing an initial covariance
+A big factor I noticed while testing this simulator is the value of the initial covariance. In some cases, a small covariance leads to the path not optimizing at all, and a large covariance causes the path to move really far from the light.
+
+The covariance choices that worked were chosen to reflect where the starting point was with respect to the light region. If the path starts closer to the light, a smaller covariance value (0.5 or 1) seems to work fine. If the starting point is farther from the light, then a larger value (2 - 3) is used.
