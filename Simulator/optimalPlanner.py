@@ -57,7 +57,7 @@ class StraightLinePlanner:
         self.optimal_path = OptimalPath([start_hat], list(), start_point, goal)
 
         self.dist = np.sqrt(((goal[1] - start_hat[1])**2) + ((goal[0] - start_hat[0])**2))
-        self.steps = round(self.dist/ (self.step_length))
+        self.steps = int(round(self.dist/ (self.step_length)))
 
         self.sin_angle = np.arcsin((goal[1] - start_hat[1])/ self.dist)
         self.cos_angle = np.arccos((goal[0] - start_hat[0])/ self.dist)
