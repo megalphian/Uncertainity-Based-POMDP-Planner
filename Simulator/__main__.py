@@ -64,6 +64,7 @@ if __name__ == "__main__":
     ax1.scatter(x,y,env.uncertainity_distribution)
     ax1.set_title('Uncertainity Distribution')
     ax1.set_xlabel('X coordinate of robot position')
-    ax1.set_ylabel('Uncertainity value')
+    ax1.set_ylabel('Y coordinate of robot position')
+    ax1.set_zlabel('Uncertainity value')
 
     plt.show()
