@@ -5,7 +5,7 @@ This is an implementation of the obstacle-free point robot case explored by [van
 
 ## Running the Simulator
 
-The simulator is built in **Python 3.8**, but it should run in any version of Python 3. The simulator requires 3 dependencies:
+The simulator is built in **Python 3.8**, but it should run in any version of Python 3.7 and above. The simulator requires 3 dependencies:
 ```
 numpy
 scipy
@@ -34,9 +34,9 @@ python Simulator --config config1.json
 ```
 cd kalman-based-pomdp-optimizer
 ```
-2) When testing the Simulator, I have noticed that the path sometimes does not optimize to a lower cost path and the original path is retained. I wasn't able to debug this issue, but re-running the simulator one or two times seems to fix the issue. 
+2) When testing the Simulator, I have noticed that the path sometimes does not optimize to a lower cost path and the original path is retained *(potentially the starting belief states are not minimizable for that run)*. I wasn't able to debug this issue, but re-running the simulator one or two times seems to optimize the path correctly. 
 
 ## On choosing an initial covariance
 A big factor I noticed while testing this simulator is the value of the initial covariance. In some cases, a small covariance leads to the path not optimizing at all, and a large covariance causes the path to move really far from the light.
 
-The covariance choices that worked were chosen to reflect where the starting point was with respect to the light region. If the path starts closer to the light, a smaller covariance value (0.5 or 1) seems to work fine. If the starting point is farther from the light, then a larger value (2 - 3) is used.
+The covariance choices that worked were chosen to reflect where the starting point was with respect to the light region. If the path starts closer to the light, a smaller covariance value (0.5 or 1) seems to work fine. If the starting point is farther from the light, then a larger value (2 - 3) must be used.
